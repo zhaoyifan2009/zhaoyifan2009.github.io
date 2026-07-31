@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARG解谜作品资料库</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", system-ui, sans-serif;
+        }
+        body {
+            background-color: #f6f7f9;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .main-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+            padding: 48px;
+        }
+        h1 {
+            text-align: center;
+            color: #1a2440;
+            font-size: 30px;
+            margin-bottom: 12px;
+        }
+        .page-desc {
+            text-align: center;
+            color: #444a5c;
+            margin-bottom: 36px;
+        }
+        /* 切换按钮 */
+        .tab-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 36px;
+        }
+        .tab-btn {
+            padding: 12px 28px;
+            background-color: #e8ebf2;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            color: #1a2440;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .tab-btn.active {
+            background-color: #233159;
+            color: #ffffff;
+        }
+        .tab-btn:hover:not(.active) {
+            background-color: #d9dde8;
+        }
+        /* 内容板块 */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.show {
+            display: block;
+        }
+        .section-title {
+            font-size: 22px;
+            color: #1a2440;
+            margin-bottom: 24px;
+        }
+        /* ARG项目卡片 */
+        .arg-list {
+            display: grid;
+            gap: 18px;
+        }
+        .arg-item {
+            border: 1px solid #e2e5ee;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .arg-info h3 {
+            color: #1a2440;
+            margin-bottom: 6px;
+        }
+        .arg-info p {
+            color: #444a5c;
+            font-size: 15px;
+        }
+        .arg-link {
+            padding: 10px 22px;
+            background-color: #233159;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+        .arg-link:hover {
+            background-color: #304275;
+            transform: translateY(-2px);
+        }
+        .empty-text {
+            text-align: center;
+            padding: 40px 0;
+            color: #777b8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-card">
+            <h1>ARG解谜作品资料库</h1>
+            <p class="page-desc">自制ARG项目 | 收集优质解谜ARG</p>
+
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-target="my-arg">我制作的ARG</button>
+                <button class="tab-btn" data-target="collect-arg">收集他人ARG</button>
+            </div>
+
+            <!-- ========== 我制作的ARG 板块 ========== -->
+            <div id="my-arg" class="tab-content show">
+                <h2 class="section-title">自制ARG项目</h2>
+                <div class="arg-list">
+                    <!-- ===== 新增项目直接复制下面这块模板 =====
+                    <div class="arg-item">
+                        <div class="arg-info">
+                            <h3>项目名称</h3>
+                            <p>简短介绍文字</p>
+                        </div>
+                        <a href="你的页面地址.html" class="arg-link">进入项目</a>
+                    </div>
+                    -->
+
+                    <div class="arg-item">
+                        <div class="arg-info">
+                            <h3>密室逃脱Demo</h3>
+                            <p>绑架密室题材ARG，Demo版本，正式版预计2027年7月发布</p>
+                        </div>
+                        <a href="Demo/PlotSummary.html" class="arg-link">进入Demo</a>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ========== 收集他人ARG 板块 ========== -->
+            <div id="collect-arg" class="tab-content">
+                <h2 class="section-title">收集 - 他人制作ARG</h2>
+                <div class="arg-list">
+
+                    <div class="arg-item">
+                        <div class="arg-info">
+                            <h3>南湾一中：找到我</h3>
+                            <p>你是柳橙，毕业于南湾一中。某日，你忽然想起了高中时最好的朋友沈伏，但翻看通讯录却发现没有交换号码，也没有对方的联系方式。想到高考前的一整年，她一直行为古怪，似乎被什么困扰得很深。你心中隐隐觉得不安，决定登上南湾一中官网一探究竟。</p>
+                        </div>
+                        <a href="https://tjlx0315.github.io/Findme/lead.html" class="arg-link">访问地址</a>
+                    </div>
+
+                 
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const buttons = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('show'));
+                btn.classList.add('active');
+                const targetId = btn.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('show');
+            })
+        })
+    </script>
+</body>
+</html>
