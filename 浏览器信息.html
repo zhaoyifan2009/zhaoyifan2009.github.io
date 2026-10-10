@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浏览器信息检测</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, sans-serif;
+        }
+        body {
+            background-color: #f4f7fa;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #222;
+            margin-bottom: 24px;
+            font-size: 24px;
+        }
+        .info-item {
+            padding: 14px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .label {
+            width: 160px;
+            font-weight: 600;
+            color: #444;
+        }
+        .value {
+            flex: 1;
+            color: #111;
+            word-break: break-all;
+        }
+        #ua {
+            font-family: monospace;
+            font-size: 13px;
+            background: #f2f4f6;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>你的浏览器信息</h1>
+        <div class="info-item">
+            <div class="label">浏览器名称：</div>
+            <div class="value" id="browserName"></div>
+        </div>
+        <div class="info-item">
+            <div class="label">浏览器版本：</div>
+            <div class="value" id="browserVersion"></div>
+        </div>
+        <div class="info-item">
+            <div class="label">渲染内核：</div>
+            <div class="value" id="engineName"></div>
+        </div>
+        <div class="info-item">
+            <div class="label">操作系统：</div>
+            <div class="value" id="osName"></div>
+        </div>
+        <div class="info-item">
+            <div class="label">是否移动端：</div>
+            <div class="value" id="isMobile"></div>
+        </div>
+        <div class="info-item">
+            <div class="label">UserAgent：</div>
+            <div class="value">
+                <div id="ua"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// 解析浏览器信息函数
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let browserName = "未知浏览器";
+    let browserVersion = "";
+    let engineName = "未知内核";
+    let osName = "未知系统";
+    let isMobile = false;
+
+    // 判断操作系统
+    if (ua.includes("Win")) osName = "Windows";
+    else if (ua.includes("Mac")) osName = "macOS";
+    else if (ua.includes("Linux")) osName = "Linux";
+    else if (ua.includes("Android")) {
+        osName = "Android";
+        isMobile = true;
+    }
+    else if (ua.includes("iPhone") || ua.includes("iPad")) {
+        osName = "iOS";
+        isMobile = true;
+    }
+
+    // ====== 浏览器识别 ======
+    let isChromium = false;
+    if (ua.includes("Edg")) {
+        browserName = "Microsoft Edge";
+        const match = ua.match(/Edg\/(\d+\.?\d*)/);
+        browserVersion = match ? match[1] : "";
+        isChromium = true;
+    } else if (ua.includes("Chrome") && !ua.includes("Safari")) {
+        browserName = "Google Chrome";
+        const match = ua.match(/Chrome\/(\d+\.?\d*)/);
+        browserVersion = match ? match[1] : "";
+        isChromium = true;
+    } else if (ua.includes("Firefox")) {
+        browserName = "Firefox";
+        const match = ua.match(/Firefox\/(\d+\.?\d*)/);
+        browserVersion = match ? match[1] : "";
+    } else if (ua.includes("Safari") && !ua.includes("Chrome")) {
+        browserName = "Safari";
+        const match = ua.match(/Version\/(\d+\.?\d*)/);
+        browserVersion = match ? match[1] : "";
+    } else if (ua.includes("OPR") || ua.includes("Opera")) {
+        browserName = "Opera";
+        const match = ua.match(/(OPR|Opera)\/(\d+\.?\d*)/);
+        browserVersion = match ? match[2] : "";
+        isChromium = true;
+    }
+
+    // ====== 内核识别（修复重点）======
+    if (isChromium) {
+        engineName = "Blink（Chromium内核）";
+    } else if (ua.includes("Firefox")) {
+        engineName = "Gecko（火狐内核）";
+    } else if (ua.includes("WebKit")) {
+        engineName = "WebKit（Safari内核）";
+    }
+
+    return {
+        browserName,
+        browserVersion,
+        engineName,
+        osName,
+        isMobile,
+        ua
+    };
+}
+
+// 渲染页面
+const info = getBrowserInfo();
+document.getElementById('browserName').innerText = info.browserName;
+document.getElementById('browserVersion').innerText = info.browserVersion;
+document.getElementById('engineName').innerText = info.engineName;
+document.getElementById('osName').innerText = info.osName;
+document.getElementById('isMobile').innerText = info.isMobile ? "是" : "否";
+document.getElementById('ua').innerText = info.ua;
+</script>
+</body>
+</html>
