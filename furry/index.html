@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>福瑞文化 · Furry Fandom 入门指南</title>
+<meta name="description" content="一份关于福瑞（Furry）亚文化的入门介绍：定义、历史、术语、兽装、社区与常见误解。" />
+<style>
+  /* ---------- 变量与基础 ---------- */
+  :root{
+    --bg:#0e0c15;
+    --surface:rgba(255,255,255,.045);
+    --surface-2:rgba(255,255,255,.075);
+    --border:rgba(255,255,255,.09);
+    --border-strong:rgba(255,255,255,.2);
+    --text:#ece9f7;
+    --muted:#a8a2bd;
+    --accent:#ff8a4c;
+    --accent-2:#a06bff;
+    --accent-3:#3fd6c1;
+    --radius:18px;
+    --maxw:1080px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html{
+    scroll-behavior:smooth;
+    scroll-padding-top:88px;
+  }
+
+  body{
+    margin:0;
+    color:var(--text);
+    font-family:"Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+                "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size:16px;
+    line-height:1.8;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(900px 620px at 10% -10%, rgba(160,107,255,.22), transparent 62%),
+      radial-gradient(820px 520px at 92% 2%, rgba(255,138,76,.17), transparent 58%),
+      radial-gradient(700px 700px at 50% 120%, rgba(63,214,193,.10), transparent 60%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+
+  h1,h2,h3,h4{ line-height:1.3; letter-spacing:-.01em; margin:0 0 .6em; }
+  p{ margin:0 0 1em; color:var(--muted); }
+  a{ color:inherit; }
+
+  .wrap{
+    width:100%;
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:0 24px;
+  }
+
+  .grad{
+    background:linear-gradient(100deg, var(--accent) 5%, #ffd28a 45%, var(--accent-2) 95%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:transparent;
+  }
+
+  /* ---------- 导航 ---------- */
+  .nav{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(14,12,21,.72);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:12px 24px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    font-size:15px;
+    text-decoration:none;
+    white-space:nowrap;
+    letter-spacing:.02em;
+  }
+  .brand .dot{
+    width:9px;height:9px;border-radius:50%;
+    background:linear-gradient(140deg,var(--accent),var(--accent-2));
+    box-shadow:0 0 12px rgba(255,138,76,.8);
+  }
+  .nav-links{
+    display:flex;
+    gap:4px;
+    margin:0 0 0 auto;
+    padding:0;
+    list-style:none;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .nav-links::-webkit-scrollbar{ display:none; }
+  .nav-links a{
+    display:block;
+    padding:7px 13px;
+    border-radius:10px;
+    font-size:14px;
+    color:var(--muted);
+    text-decoration:none;
+    white-space:nowrap;
+    transition:color .2s, background .2s;
+  }
+  .nav-links a:hover{ color:var(--text); background:var(--surface-2); }
+  .nav-links a.active{
+    color:#1a1220;
+    background:linear-gradient(120deg,var(--accent),#ffb877);
+    font-weight:600;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    padding:110px 0 90px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";
+    position:absolute;
+    inset:auto 0 -1px 0;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+  }
+  .eyebrow{
+    display:inline-block;
+    margin:0 0 22px;
+    padding:6px 16px;
+    font-size:12.5px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:#ffc79a;
+    border:1px solid rgba(255,138,76,.35);
+    border-radius:999px;
+    background:rgba(255,138,76,.08);
+  }
+  .hero h1{
+    font-size:clamp(2.1rem, 6vw, 3.9rem);
+    font-weight:800;
+    margin-bottom:26px;
+  }
+  .hero .lead{
+    max-width:640px;
+    margin:0 auto 34px;
+    font-size:clamp(1rem, 1.6vw, 1.12rem);
+    color:#c3bed6;
+  }
+  .hero-actions{
+    display:flex;
+    gap:14px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:44px;
+  }
+  .btn{
+    display:inline-block;
+    padding:13px 28px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:600;
+    text-decoration:none;
+    transition:transform .2s, box-shadow .25s, background .25s, border-color .25s;
+  }
+  .btn-primary{
+    color:#1b1122;
+    background:linear-gradient(120deg,var(--accent),#ffc36e);
+    box-shadow:0 10px 30px -10px rgba(255,138,76,.8);
+  }
+  .btn-primary:hover{ transform:translateY(-3px); box-shadow:0 16px 36px -12px rgba(255,138,76,.95); }
+  .btn-ghost{
+    color:var(--text);
+    border:1px solid var(--border-strong);
+    background:var(--surface);
+  }
+  .btn-ghost:hover{ transform:translateY(-3px); background:var(--surface-2); }
+
+  .hero-tags{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    font-size:13.5px;
+    color:var(--muted);
+  }
+  .hero-tags span{
+    padding:6px 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+  }
+
+  /* ---------- 通用区块 ---------- */
+  .section{ padding:78px 0; }
+  .section-head{ max-width:660px; margin-bottom:42px; }
+  .section-head h2{
+    font-size:clamp(1.55rem, 3.4vw, 2.25rem);
+    font-weight:800;
+  }
+  .section-head .kicker{
+    display:block;
+    font-size:12.5px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--accent-2);
+    margin-bottom:10px;
+    font-weight:600;
+  }
+
+  /* ---------- 卡片 ---------- */
+  .grid{
+    display:grid;
+    gap:18px;
+    grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
+  }
+  .card{
+    padding:26px 24px;
+    border-radius:var(--radius);
+    border:1px solid var(--border);
+    background:var(--surface);
+    backdrop-filter:blur(8px);
+    transition:transform .3s cubic-bezier(.2,.7,.3,1), border-color .3s, background .3s, box-shadow .3s;
+  }
+  .card:hover{
+    transform:translateY(-5px);
+    border-color:rgba(160,107,255,.45);
+    background:var(--surface-2);
+    box-shadow:0 18px 40px -24px rgba(160,107,255,.9);
+  }
+  .card h3{
+    font-size:1.08rem;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .card h3 .ico{
+    font-size:1.15rem;
+    line-height:1;
+  }
+  .card p{ margin:0; font-size:14.5px; }
+
+  /* ---------- 时间线 ---------- */
+  .timeline{ position:relative; padding-left:0; margin:0; list-style:none; }
+  .timeline::before{
+    content:"";
+    position:absolute;
+    left:7px; top:8px; bottom:8px;
+    width:2px;
+    background:linear-gradient(180deg, var(--accent-2), var(--accent), transparent);
+    opacity:.65;
+  }
+  .tl-item{
+    position:relative;
+    padding-left:38px;
+    padding-bottom:30px;
+  }
+  .tl-item:last-child{ padding-bottom:0; }
+  .tl-item::before{
+    content:"";
+    position:absolute;
+    left:1px; top:8px;
+    width:14px; height:14px;
+    border-radius:50%;
+    background:#181327;
+    border:2px solid var(--accent);
+    box-shadow:0 0 0 4px rgba(255,138,76,.12);
+  }
+  .tl-item h3{
+    font-size:1rem;
+    margin-bottom:6px;
+    color:#ffcf9f;
+    letter-spacing:.01em;
+  }
+  .tl-item p{ margin:0; font-size:14.5px; }
+
+  /* ---------- 术语表 ---------- */
+  .glossary{
+    display:grid;
+    gap:14px;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+  }
+  .term{
+    padding:18px 20px;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    transition:border-color .25s, background .25s, transform .25s;
+  }
+  .term:hover{
+    border-color:rgba(63,214,193,.45);
+    background:var(--surface-2);
+    transform:translateY(-3px);
+  }
+  .term dt{
+    font-weight:700;
+    font-size:15px;
+    margin-bottom:4px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .term dt .en{
+    font-size:12px;
+    font-weight:500;
+    color:var(--accent-3);
+    letter-spacing:.04em;
+  }
+  .term dd{
+    margin:0;
+    font-size:13.8px;
+    color:var(--muted);
+    line-height:1.7;
+  }
+
+  /* ---------- 兽装两栏 ---------- */
+  .split{
+    display:grid;
+    gap:22px;
+    grid-template-columns:1.15fr .85fr;
+    align-items:start;
+  }
+  @media (max-width:820px){
+    .split{ grid-template-columns:1fr; }
+  }
+  .feature-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  .feature-list li{
+    position:relative;
+    padding-left:26px;
+    margin-bottom:14px;
+    font-size:14.8px;
+    color:var(--muted);
+  }
+  .feature-list li::before{
+    content:"";
+    position:absolute;
+    left:2px; top:.62em;
+    width:8px; height:8px;
+    border-radius:2px;
+    background:linear-gradient(140deg,var(--accent),var(--accent-2));
+    transform:rotate(45deg);
+  }
+  .feature-list li strong{ color:var(--text); font-weight:600; }
+
+  .panel{
+    padding:26px 24px;
+    border-radius:var(--radius);
+    border:1px solid var(--border);
+    background:linear-gradient(160deg, rgba(160,107,255,.12), rgba(255,138,76,.06));
+  }
+  .panel h3{ font-size:1rem; margin-bottom:14px; }
+  .suit-badge{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:6px;
+  }
+  .suit-badge span{
+    font-size:12.5px;
+    padding:5px 12px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.05);
+    color:#d6d1e6;
+  }
+
+  /* ---------- 数据条 ---------- */
+  .stats{
+    display:grid;
+    gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    margin-top:8px;
+  }
+  .stat{
+    padding:24px 22px;
+    border-radius:var(--radius);
+    border:1px solid var(--border);
+    background:var(--surface);
+    text-align:center;
+  }
+  .stat b{
+    display:block;
+    font-size:1.6rem;
+    font-weight:800;
+    margin-bottom:4px;
+    background:linear-gradient(120deg,#ffd08a,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .stat small{
+    font-size:13px;
+    color:var(--muted);
+    letter-spacing:.02em;
+  }
+
+  /* ---------- 误解 ---------- */
+  .myth{
+    padding:22px 24px;
+    border-radius:16px;
+    border:1px solid rgba(255,110,110,.22);
+    background:rgba(255,90,90,.055);
+    margin-bottom:14px;
+  }
+  .myth .q{
+    display:flex;
+    gap:10px;
+    font-weight:700;
+    font-size:15px;
+    margin-bottom:10px;
+    color:#ffb3b3;
+  }
+  .myth .a{
+    display:flex;
+    gap:10px;
+    font-size:14.5px;
+    color:var(--muted);
+    line-height:1.75;
+    margin:0;
+  }
+  .myth .mark{ flex:0 0 auto; }
+  .myth .mark.ok{ color:var(--accent-3); }
+
+  /* ---------- 折叠问答 ---------- */
+  details{
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--surface);
+    padding:16px 20px;
+    margin-bottom:12px;
+    transition:border-color .25s, background .25s;
+  }
+  details[open]{
+    border-color:rgba(160,107,255,.4);
+    background:var(--surface-2);
+  }
+  summary{
+    cursor:pointer;
+    font-weight:600;
+    font-size:15px;
+    list-style:none;
+    display:flex;
+    justify-content:space-between;
+    gap:14px;
+    align-items:center;
+  }
+  summary::-webkit-details-marker{ display:none; }
+  summary::after{
+    content:"+";
+    font-size:1.2rem;
+    color:var(--accent);
+    transition:transform .25s;
+  }
+  details[open] summary::after{ transform:rotate(45deg); }
+  details p{
+    margin:14px 0 0;
+    font-size:14.5px;
+  }
+
+  /* ---------- 页脚 ---------- */
+  .footer{
+    margin-top:40px;
+    padding:48px 0 56px;
+    border-top:1px solid var(--border);
+    text-align:center;
+  }
+  .footer .paw{ font-size:20px; opacity:.8; }
+  .footer p{
+    font-size:13.5px;
+    margin:12px 0 0;
+    color:#8b85a3;
+  }
+  .footer .links{
+    display:flex;
+    gap:18px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:18px;
+    font-size:13.5px;
+  }
+  .footer .links a{
+    color:var(--muted);
+    text-decoration:none;
+    border-bottom:1px dashed rgba(255,255,255,.2);
+    padding-bottom:1px;
+    transition:color .2s, border-color .2s;
+  }
+  .footer .links a:hover{ color:var(--accent); border-color:var(--accent); }
+
+  /* ---------- 滚动入场动画 ---------- */
+  .reveal{
+    opacity:0;
+    transform:translateY(26px);
+    transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.3,1);
+  }
+  .reveal.visible{
+    opacity:1;
+    transform:none;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .reveal{ opacity:1; transform:none; transition:none; }
+    .card:hover, .term:hover, .btn:hover{ transform:none; }
+  }
+
+  @media (max-width:600px){
+    .hero{ padding:80px 0 64px; }
+    .section{ padding:60px 0; }
+    .nav-inner{ padding:10px 16px; gap:10px; }
+    .wrap{ padding:0 18px; }
+  }
+</style>
+</head>
+<body id="top">
+
+<!-- ============ 导航 ============ -->
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top"><span class="dot"></span>福瑞文化</a>
+    <ul class="nav-links">
+      <li><a href="#what">是什么</a></li>
+      <li><a href="#history">起源</a></li>
+      <li><a href="#glossary">术语</a></li>
+      <li><a href="#suit">兽装</a></li>
+      <li><a href="#community">社区</a></li>
+      <li><a href="#myths">误解</a></li>
+      <li><a href="#start">如何开始</a></li>
+    </ul>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ Hero ============ -->
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Furry Fandom · 亚文化入门</p>
+      <h1>当动物<br><span class="grad">长出了人类的灵魂</span></h1>
+      <p class="lead">
+        福瑞（Furry）是一个围绕「拟人化动物角色」展开的兴趣与创作社群。
+        人们在这里画画、写作、缝制兽装、参加展会、结识朋友——
+        用另一种形象，表达真实的自己。
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#what">开始了解</a>
+        <a class="btn btn-ghost" href="#glossary">术语速查</a>
+      </div>
+      <div class="hero-tags">
+        <span>🎨 创作</span>
+        <span>🧵 兽装</span>
+        <span>🤝 社群</span>
+        <span>🌍 全球</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 是什么 ============ -->
+  <section class="section" id="what">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">What is Furry</span>
+        <h2>福瑞到底是什么？</h2>
+        <p>
+          简单说，福瑞是一种<strong>对拟人化动物角色（Anthropomorphic Animals）的喜爱</strong>，
+          以及由这种喜爱衍生出的创作、角色扮演和社交活动。
+          它不是一个有统一教义的组织，更像是一片由无数兴趣小组拼接成的群岛。
+        </p>
+      </div>
+
+      <div class="grid">
+        <article class="card reveal">
+          <h3><span class="ico">🐺</span>拟人化 Anthro</h3>
+          <p>
+            具有人类特征的动物形象：能直立行走、会说话、有表情与性格。
+            从《疯狂动物城》到《狮子王》，这类角色其实早已是流行文化的一部分。
+          </p>
+        </article>
+
+        <article class="card reveal">
+          <h3><span class="ico">✨</span>兽设 Fursona</h3>
+          <p>
+            Furry + Persona 的合成词，指一个人为自己创造的动物化身。
+            它可能代表性格、审美或理想自我——是表达，而不是「装成动物」。
+          </p>
+        </article>
+
+        <article class="card reveal">
+          <h3><span class="ico">🎭</span>兽装 Fursuit</h3>
+          <p>
+            把兽设做成可以穿在身上的毛绒服装。扮演者（Fursuiter）在展会与聚会中
+            以角色身份与人互动，这是福瑞文化中最具辨识度的一环。
+          </p>
+        </article>
+
+        <article class="card reveal">
+          <h3><span class="ico">🫂</span>社群 Fandom</h3>
+          <p>
+            围绕共同兴趣形成的松散社群：线上有论坛、画师平台与聊天群，
+            线下有兽聚（Furmeet）与兽展（Convention）。
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 起源 ============ -->
+  <section class="section" id="history">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Origins &amp; Timeline</span>
+        <h2>它从哪里来？</h2>
+        <p>
+          福瑞文化并非凭空出现，它是科幻迷聚会、漫画同人圈与早期互联网共同孕育的产物。
+        </p>
+      </div>
+
+      <ol class="timeline">
+        <li class="tl-item reveal">
+          <h3>1970s — 1980s · 萌芽</h3>
+          <p>
+            拟人动物爱好者聚集在科幻与漫画展会的小型讨论组中。
+            约 1980 年前后，「Furry」一词开始被用来指代这类角色与爱好者群体。
+          </p>
+        </li>
+        <li class="tl-item reveal">
+          <h3>1989 · 第一届兽展</h3>
+          <p>
+            Confurence 在美国加州举办，被视为现代福瑞展会的起点，
+            此后各地陆续出现规模不一的 Convention。
+          </p>
+        </li>
+        <li class="tl-item reveal">
+          <h3>1990s · 互联网时代</h3>
+          <p>
+            邮件列表、新闻组与个人主页让分散在世界各地的爱好者第一次连成网络，
+            同人创作开始爆发式增长。
+          </p>
+        </li>
+        <li class="tl-item reveal">
+          <h3>2000s · 展会与兽装的成熟</h3>
+          <p>
+            兽装制作逐渐专业化，大型展会（如 Anthrocon）规模逐年攀升，
+            兽装巡游、舞台表演成为展会标志性项目。
+          </p>
+        </li>
+        <li class="tl-item reveal">
+          <h3>2010s — 至今 · 全球化与多元化</h3>
+          <p>
+            社交媒体、视频平台与虚拟现实让社区进一步扩张。
+            亚洲、欧洲、拉美的本地社群迅速成长，创作形式也从绘画扩展到动画、
+            音乐、手作与直播。
+          </p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ 术语 ============ -->
+  <section class="section" id="glossary">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Glossary</span>
+        <h2>常用术语速查</h2>
+        <p>看懂这些词，你就能读懂大部分福瑞社区的对话。</p>
+      </div>
+
+      <dl class="glossary">
+        <div class="term reveal">
+          <dt>Furry <span class="en">兽迷</span></dt>
+          <dd>对拟人化动物角色感兴趣的人，也指这种兴趣本身。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Anthro <span class="en">拟人化</span></dt>
+          <dd>具备人类特征的动物形象，是福瑞创作的核心对象。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Fursona <span class="en">兽设</span></dt>
+          <dd>个人的动物化身，通常有名字、性格设定和外观设计。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Fursuit <span class="en">兽装</span></dt>
+          <dd>把兽设实体化的可穿戴服装，扮演者称为 Fursuiter。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Full / Partial <span class="en">全装 / 半装</span></dt>
+          <dd>全装包含头、身体、手脚与尾巴；半装通常只含头部、手爪与尾巴。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Convention <span class="en">兽展</span></dt>
+          <dd>大型线下聚会，包含摊位、舞台、巡游与讲座等活动。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Furmeet <span class="en">兽聚</span></dt>
+          <dd>规模更小的本地线下聚会，气氛轻松随意。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Boop <span class="en">鼻触</span></dt>
+          <dd>轻轻碰一下对方鼻子（或兽装鼻子）的友好动作。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>YCH <span class="en">约稿形式</span></dt>
+          <dd>「Your Character Here」，画师提供构图模板，买家把自己的角色放进画面。</dd>
+        </div>
+        <div class="term reveal">
+          <dt>Headspace <span class="en">角色状态</span></dt>
+          <dd>兽装扮演者进入角色时的心理状态，是表演的一部分。</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ============ 兽装 ============ -->
+  <section class="section" id="suit">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Fursuit Culture</span>
+        <h2>兽装：把角色穿在身上</h2>
+        <p>
+          兽装是福瑞文化中最容易被认出的部分。它既是手工艺品，也是一种表演媒介。
+        </p>
+      </div>
+
+      <div class="split">
+        <div class="card reveal" style="padding:28px 26px;">
+          <h3 style="margin-bottom:18px;">🧵 关于兽装，你可能想知道</h3>
+          <ul class="feature-list">
+            <li><strong>手工制作：</strong>大多由独立制作者（Maker）一针一线完成，从选毛、雕刻头模到裁剪缝制，一套全装往往需要数周乃至数月。</li>
+            <li><strong>不是玩偶服：</strong>兽装强调角色个性与表情设计，与商业吉祥物人偶在工艺与用途上都不太一样。</li>
+            <li><strong>视线与呼吸：</strong>视野通常通过嘴部或眼部的网纱实现，扮演者需要额外注意散热与补水，展会一般设有专门的休息区。</li>
+            <li><strong>规则与尊重：</strong>多数展会要求扮演者遵守行为规范，未经允许不应随意触碰或拍摄兽装扮演者。</li>
+            <li><strong>价格区间大：</strong>从简单半装到高精度全装，价格跨度很大，二手交易与租赁也很常见。</li>
+          </ul>
+        </div>
+
+        <aside class="panel reveal">
+          <h3>🎪 展会上会发生什么</h3>
+          <p style="font-size:14.5px;">
+            兽装巡游（Fursuit Parade）、舞台表演、即兴互动、
+            与画师面对面交流、参加主题讲座与工作坊……
+            对很多人来说，展会是一年中难得的「可以做自己」的几天。
+          </p>
+          <div class="suit-badge">
+            <span>巡游</span>
+            <span>舞台剧</span>
+            <span>舞蹈</span>
+            <span>摊位</span>
+            <span>同好合影</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 社区 ============ -->
+  <section class="section" id="community">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Creation &amp; Community</span>
+        <h2>创作，是这个社群的血液</h2>
+        <p>
+          福瑞文化从诞生之初就与「自己动手创作」紧密相连。
+          大多数人加入的第一步，不是买兽装，而是画下第一个属于自己的角色。
+        </p>
+      </div>
+
+      <div class="grid">
+        <article class="card reveal">
+          <h3><span class="ico">🖌️</span>绘画与设计</h3>
+          <p>角色设定图、插画、漫画是社区最主流的创作形式，画师约稿（Commission）形成了成熟的创作生态。</p>
+        </article>
+        <article class="card reveal">
+          <h3><span class="ico">📖</span>写作与世界观</h3>
+          <p>小说、角色背景故事、原创世界观设定，让角色不只是一张图，而是有经历的生命。</p>
+        </article>
+        <article class="card reveal">
+          <h3><span class="ico">🎵</span>音乐与动画</h3>
+          <p>同人音乐、手书动画、配音与短视频，让角色在动态与声音中活起来。</p>
+        </article>
+        <article class="card reveal">
+          <h3><span class="ico">🧶</span>手作与工艺</h3>
+          <p>兽装、爪套、徽章、布偶……手作者把二维的设定变成可以触摸的实物。</p>
+        </article>
+      </div>
+
+      <div class="stats" style="margin-top:26px;">
+        <div class="stat reveal"><b>1980s</b><small>文化成形于这一时期</small></div>
+        <div class="stat reveal"><b>10,000+</b><small>大型兽展单届参会人数规模</small></div>
+        <div class="stat reveal"><b>全球</b><small>社群遍布各大洲，各有本地风格</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 误解 ============ -->
+  <section class="section" id="myths">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Common Misconceptions</span>
+        <h2>几个常见的误解</h2>
+        <p>福瑞文化常被误读。了解事实，比听传言更有用。</p>
+      </div>
+
+      <div class="myth reveal">
+        <div class="q"><span class="mark">✕</span>「福瑞就是穿毛绒服装的人」</div>
+        <p class="a"><span class="mark ok">✓</span>
+          兽装只是其中一部分。大量爱好者只画画、写作或参与线上交流，从不穿兽装。
+          是否拥有兽装，与是不是福瑞没有必然关系。
+        </p>
+      </div>
+
+      <div class="myth reveal">
+        <div class="q"><span class="mark">✕</span>「福瑞是一种心理疾病或身份认同障碍」</div>
+        <p class="a"><span class="mark ok">✓</span>
+          没有任何科学依据支持这种说法。福瑞是一种兴趣爱好与亚文化，
+          参与者的心理状况与普通人群没有区别。
+        </p>
+      </div>
+
+      <div class="myth reveal">
+        <div class="q"><span class="mark">✕</span>「福瑞圈就是软色情」</div>
+        <p class="a"><span class="mark ok">✓</span>
+          社区主体是绘画、写作、手作与社交。多数展会与线上平台都有明确的内容分级与
+          年龄限制规则，公共场合强调「适合全年龄」。用少部分内容概括整个社群并不公平。
+        </p>
+      </div>
+
+      <div class="myth reveal">
+        <div class="q"><span class="mark">✕</span>「福瑞和兽交是一回事」</div>
+        <p class="a"><span class="mark ok">✓</span>
+          这是最严重也最伤人的误解。福瑞关注的是虚构的拟人化角色与文化创作，
+          与任何现实中的动物无关，社群对此普遍持明确反对态度。请勿将两者混为一谈。
+        </p>
+      </div>
+
+      <div class="myth reveal">
+        <div class="q"><span class="mark">✕</span>「必须画得好、买得起兽装才能加入」</div>
+        <p class="a"><span class="mark ok">✓</span>
+          完全不需要。爱好者里有专业画师，也有只会画火柴人的普通人；
+          有全装扮演者，也有只看同人图的路人。喜欢，就是入场券。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 如何开始 ============ -->
+  <section class="section" id="start">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="kicker">Getting Started</span>
+        <h2>想了解或加入？从这里开始</h2>
+        <p>不需要任何门槛，按自己的节奏来就好。</p>
+      </div>
+
+      <details class="reveal" open>
+        <summary>第一步：看看别人的作品</summary>
+        <p>
+          从喜欢的画师或动画作品入手是最轻松的入口。观察角色设定图（Reference Sheet）
+          通常包含哪些信息：正面、侧面、背面、配色和细节特写。
+        </p>
+      </details>
+
+      <details class="reveal">
+        <summary>第二步：试着设计自己的兽设</summary>
+        <p>
+          不需要画技。用文字写下物种、毛色、性格、喜欢的东西，就已经是一个兽设的雏形。
+          很多人会先在网上找「免费接设定」的画师，或者使用角色设计工具辅助。
+        </p>
+      </details>
+
+      <details class="reveal">
+        <summary>第三步：找到同好</summary>
+        <p>
+          国内外都有大量线上社区：绘画平台、聊天群组、论坛与视频频道。
+          先潜水观察社区规范，是融入任何亚文化的好习惯。
+        </p>
+      </details>
+
+      <details class="reveal">
+        <summary>第四步：参加线下活动</summary>
+        <p>
+          可以先去本地的小型兽聚（Furmeet）体验氛围，再考虑规模更大的兽展。
+          参加前记得阅读活动规则，尤其是关于拍摄、触碰兽装与内容分级的条款。
+        </p>
+      </details>
+
+      <details class="reveal">
+        <summary>关于礼貌与边界</summary>
+        <p>
+          福瑞社区普遍重视包容与尊重：不随意评判他人的角色设定，
+          未经允许不触碰兽装扮演者，不在公共场合传播成人内容。
+          这些基本礼貌，比任何「圈内知识」都重要。
+        </p>
+      </details>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ 页脚 ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="paw">🐾</div>
+    <p>
+      本页面为福瑞（Furry）亚文化的科普性介绍，内容力求中立客观。<br />
+      文化因多样而有趣，也因尊重而长久。
+    </p>
+    <div class="links">
+      <a href="https://en.wikifur.com/" target="_blank" rel="noopener noreferrer">WikiFur</a>
+      <a href="https://www.furaffinity.net/" target="_blank" rel="noopener noreferrer">FurAffinity</a>
+      <a href="https://www.anthrocon.org/" target="_blank" rel="noopener noreferrer">Anthrocon</a>
+    </div>
+    <p style="margin-top:22px; opacity:.65;">© <span id="year"></span> Furry Culture Intro · 仅供学习与分享</p>
+  </div>
+</footer>
+
+<script>
+  /* ---------- 滚动入场动画 ---------- */
+  (function () {
+    var items = document.querySelectorAll('.reveal');
+
+    if (!('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('visible'); });
+      return;
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        var siblings = el.parentElement ? Array.prototype.slice.call(el.parentElement.children) : [];
+        var index = siblings.indexOf(el);
+        el.style.transitionDelay = (index > -1 ? (index % 4) * 70 : 0) + 'ms';
+        el.classList.add('visible');
+        io.unobserve(el);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    items.forEach(function (el) { io.observe(el); });
+  })();
+
+  /* ---------- 导航高亮 ---------- */
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+    var sections = Array.prototype.slice.call(document.querySelectorAll('section[id]'));
+
+    if (!('IntersectionObserver' in window) || !sections.length) return;
+
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var id = '#' + entry.target.id;
+        links.forEach(function (a) {
+          a.classList.toggle('active', a.getAttribute('href') === id);
+        });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { spy.observe(s); });
+  })();
+
+  /* ---------- 年份 ---------- */
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
