@@ -1,0 +1,4795 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>刷题系统</title>
+    <link href="bootstrap-5.3.0-alpha1-dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+		/* U2FsdGVkX18Hxv2h+7YA+aFiV4uAZjEMgAko+XgTOYiiAUNEJdxnjhwqDqCKgh83 */
+        /* 全局字体放大1.5倍 */
+        html { font-size: 150%; }
+        .option-btn {
+            text-align: left;
+            white-space: normal;
+            font-size: 1rem;
+        }
+        .analysis-card {
+            border-left: 5px solid #17a2b8;
+        }
+        .progress-bar-custom {
+            transition: width 0.3s ease;
+        }
+        .paper-select {
+            max-width: 200px;
+        }
+        .exam-question {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        #question-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        /* 自定义判分弹窗 */
+        .score-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .score-box {
+            background: #fff;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 25px;
+            border-radius: 12px;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<!-- 自定义判分弹窗 -->
+<div class="score-modal" id="scoreModal">
+    <div class="score-box">
+        <button class="close-btn" onclick="closeScoreModal()">×</button>
+        <div id="scoreResult"></div>
+    </div>
+</div>
+
+<div class="container mt-4 mb-5">
+    <ul class="nav nav-tabs nav-fill mb-4" id="studyTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-mode="seq">顺序练习</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-mode="random">随机练习</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-mode="topic">专题练习</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-mode="exam">模拟考试</button>
+        </li>
+    </ul>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
+            <span id="mode-title">正在练习：顺序练习</span>
+            <div class="d-flex gap-2 align-items-center mt-2 mt-md-0">
+                <span id="progress-text" class="badge bg-secondary d-none">0/0</span>
+                <select id="paperSelector" class="form-select form-select-sm paper-select d-none" onchange="changePaper()">
+                    <option value="0">请选择套卷</option>
+                </select>
+                <button id="random-refresh-btn" class="btn btn-sm btn-warning d-none" onclick="refreshRandom()">随机抽题</button>
+                <button id="exam-generate-btn" class="btn btn-sm btn-primary d-none" onclick="generateExamPaper()">生成试卷</button>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <div id="practice-area">
+                <div id="topic-settings" class="mb-4 p-3 bg-light rounded d-none">
+                    <h6>选择题库标签</h6>
+                    <div id="tag-container" class="mb-2"></div>
+                    <button class="btn btn-primary btn-sm" onclick="startTopicPractice()">开始专题练习</button>
+                </div>
+
+                <div class="progress mb-4 d-none" style="height: 8px;" id="progress-box">
+                    <div id="progress-bar" class="progress-bar progress-bar-custom bg-primary" style="width: 10%"></div>
+                </div>
+
+                <div id="question-area">
+                    <h5 class="mb-3" id="question-title">
+                        <span class="badge bg-info me-2" id="q-type">单选</span>
+                        <span id="q-content">加载题目中...</span>
+                    </h5>
+                    <div class="d-grid gap-2 mb-4" id="options-container"></div>
+                </div>
+
+                <div id="feedback-area" class="d-none">
+                    <div id="correct-flag" class="alert alert-success"></div>
+                    <div class="card analysis-card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">题目解析</h6>
+                            <p class="card-text" id="q-analysis"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between" id="practice-btns">
+                    <button class="btn btn-outline-secondary" id="btn-prev" onclick="prevQuestion()">上一题</button>
+                    <button class="btn btn-success" id="btn-next" onclick="nextQuestion()">下一题</button>
+                </div>
+            </div>
+
+            <div id="exam-area" class="d-none">
+                <div id="exam-list" class="mb-4"></div>
+                <button class="btn btn-danger w-100" onclick="submitExam()">提交试卷</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="bootstrap-5.3.0-alpha1-dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ===================== 核心题库：20套达标检测卷（完整整理） =====================
+const questionPapers = [
+    
+    {
+        "paperId": 1,
+        "paperName": "职业技能测试（一）",
+        "questions": [
+            
+  {
+    "id": 1,
+    "type": "choice",
+    "question": "习近平同志在二十大报告中阐述了过去（     )的工作和新时代十年的伟大变革。",
+    "options": ["五年", "十年", "十五年", "二十年"],
+    "answer": 0,
+    "analysis": "考点：党的二十大报告；过去五年的工作和新时代十年的伟大变革",
+    "tags": ["思政", "时政"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 2,
+    "type": "choice",
+    "question": "我们经过持续奋斗，实现了小康这个中华民族的千年梦想，打赢了人类历史上规模最大的脱贫攻坚战，全国八百三十二个贫困县全部摘帽，近（     ）农村贫困人口实现脱贫,九百六十多万贫困人口实现易地搬迁。",
+    "options": ["二亿", "三亿", "一亿", "一点五亿"],
+    "answer": 2,
+    "analysis": "考点：脱贫攻坚；近一亿农村贫困人口实现脱贫",
+    "tags": ["思政", "时政"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 3,
+    "type": "choice",
+    "question": "党的二十大报告指出，（     )是立党为公、执政为民的本质要求。",
+    "options": ["为民造福", "科学发展", "发展经济"],
+    "answer": 0,
+    "analysis": "考点：党的执政理念；为民造福是立党为公、执政为民的本质要求",
+    "tags": ["思政", "党建"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 4,
+    "type": "choice",
+    "question": "全面准确推进“一国两制”实践，坚持“一国两制”、“港人治港”、“澳人治澳”、(     )的方针。",
+    "options": ["综合自治", "民主自治", "充分自治", "高度自治"],
+    "answer": 3,
+    "analysis": "考点：一国两制；坚持高度自治的方针",
+    "tags": ["思政", "时政"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 5,
+    "type": "choice",
+    "question": "新时代十年的伟大变革，是(     ）的，体现在改革发展稳定、内政外交国防、治党治国治军各个方面，在党史、新中国史、改革开放史、社会主义发展史、中华民族发展史上具有里程碑意义。事非经过不知难,成如容易却艰辛。",
+    "options": ["全局性、根本性、格局性", "全方位、根本性、格局性", "战略性、根本性、格局性", "全方位、根本性、战略性"],
+    "answer": 1,
+    "analysis": "考点：新时代十年伟大变革；是全方位、根本性、格局性的",
+    "tags": ["思政", "时政"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 6,
+    "type": "choice",
+    "question": "(     )是维护社会公平正义的最后一道防线。",
+    "options": ["科学立法", "严格执法", "公正司法"],
+    "answer": 2,
+    "analysis": "考点：依法治国；公正司法是维护社会公平正义的最后一道防线",
+    "tags": ["思政", "法治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 7,
+    "type": "choice",
+    "question": "党的二十大报告中向全党提出“(     )”的新要求",
+    "options": ["务必不忘初心，务必谦虚谨慎，务必敢于斗争", "务必牢记使命，务必艰苦奋斗，务必善于斗争", "务必统一思想、统一意志、统一行动，坚定历史自信，增强历史主动", "务必不忘初心、牢记使命,务必谦虚谨慎、艰苦奋斗，务必敢于斗争、善于斗争"],
+    "answer": 3,
+    "analysis": "考点：三个务必；党的二十大提出全党必须牢记三个务必",
+    "tags": ["思政", "党建"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 8,
+    "type": "choice",
+    "question": "党的二十大报告指出，（      )是民族复兴的根基，(      )是国家强盛的前提。",
+    "options": ["社会稳定   国家安全", "人民安全   经济稳定", "国家安全   社会稳定"],
+    "answer": 2,
+    "analysis": "考点：国家安全；国家安全是民族复兴的根基，社会稳定是国家强盛的前提",
+    "tags": ["思政", "时政"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 9,
+    "type": "choice",
+    "question": "二十大报告指出，(      ）是全面建设社会主义现代化国家的首要任务。",
+    "options": ["高质量发展", "绿色发展", "创新发展", "低碳发展"],
+    "answer": 0,
+    "analysis": "考点：高质量发展；是全面建设社会主义现代化国家的首要任务",
+    "tags": ["思政", "经济"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 10,
+    "type": "choice",
+    "question": "（    ）是马克思主义的本质属性，党的理论是来自人民、为了人民、造福人民的理论，人民的创造性实践是理论创新的不竭源泉。",
+    "options": ["无产阶级", "人民性", "共产党", "社会主义"],
+    "answer": 1,
+    "analysis": "考点：马克思主义本质属性；人民性是马克思主义的本质属性",
+    "tags": ["思政", "理论"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 11,
+    "type": "choice",
+    "question": "我们坚持绿水青山就是（     )的理念，坚持山水林田湖草沙一体化保护和系统治理，生态文明制度体系更加健全，生态环境保护发生历史性、转折性、全局性变化，我们的祖国天更蓝、山更绿、水更清。",
+    "options": ["金山银山", "发展", "创新", "金水银山"],
+    "answer": 0,
+    "analysis": "考点：生态文明；绿水青山就是金山银山的理念",
+    "tags": ["思政", "生态"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 12,
+    "type": "choice",
+    "question": "推动（     ）常态化制度化,持续抓好党史、新中国史、改革开放史、社会主义发展史宣传教育，引导人民知史爱党、知史爱国,不断坚定中国特色社会主义共同理想。",
+    "options": ["爱国主义教育", "理想信念教育", "社会主义教育"],
+    "answer": 1,
+    "analysis": "考点：理想信念教育；推动理想信念教育常态化制度化",
+    "tags": ["思政", "宣传"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 13,
+    "type": "choice",
+    "question": "国家安全是民族复兴的（      ），社会稳定是国家强盛的前提。",
+    "options": ["基础", "根基", "前提", "根本"],
+    "answer": 1,
+    "analysis": "考点：国家安全；国家安全是民族复兴的根基",
+    "tags": ["思政", "时政"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 14,
+    "type": "choice",
+    "question": "不断谱写（      ）新篇章,是当代中国共产党人的庄严历史责任。",
+    "options": ["马克思主义中国化时代化", "马克思主义中国化", "马克思主现代化", "马克思主义中国化现代化"],
+    "answer": 0,
+    "analysis": "考点：马克思主义中国化时代化；谱写马克思主义中国化时代化新篇章",
+    "tags": ["思政", "理论"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 15,
+    "type": "choice",
+    "question": "（     ）告诉我们，中国共产党为什么能，中国特色社会主义为什么好，归根到底是马克思主义行,是中国化时代化的马克思主义行。",
+    "options": ["理论", "历史", "实践", "经验"],
+    "answer": 2,
+    "analysis": "考点：实践；实践告诉我们中国共产党为什么能",
+    "tags": ["思政", "理论"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 16,
+    "type": "choice",
+    "question": "十八大以来，我们党勇于进行理论（     ），以全新的视野深化对共产党执政规律、社会主义建设规律、人类社会发展规律的认识，取得重大理论创新成果，集中体现为新时代中国特色社会主义思想。",
+    "options": ["实践和创新", "实践和探索", "总结和创新", "探索和创新"],
+    "answer": 3,
+    "analysis": "考点：理论探索和创新；勇于进行理论探索和创新",
+    "tags": ["思政", "理论"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 17,
+    "type": "choice",
+    "question": "全面推进乡村振兴，坚持农业农村优先发展，巩固拓展脱贫攻坚成果，加快建设农业强国，扎实推动乡村产业、人才、文化、生态、组织振兴,全方位夯实粮食安全根基,牢牢守住（     ）亩耕地红线，确保中国人的饭碗牢牢端在自己手中。",
+    "options": ["16亿", "17亿", "18亿", "19亿"],
+    "answer": 2,
+    "analysis": "考点：耕地红线；牢牢守住18亿亩耕地红线",
+    "tags": ["思政", "农业"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 18,
+    "type": "choice",
+    "question": "（     ）是我们立党立国、兴党兴国的根本指导思想。",
+    "options": ["马克思主义", "毛泽东思想", "实践", "创新"],
+    "answer": 0,
+    "analysis": "考点：根本指导思想；马克思主义是立党立国、兴党兴国的根本指导思想",
+    "tags": ["思政", "理论"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 19,
+    "type": "choice",
+    "question": "加快实施重要生态系统保护和修复重大工程，实施生物多样性保护重大工程，推行草原森林河流湖泊湿地休养生息，实施好长江（    ）禁渔，健全耕地休耕轮作制度，,防治外来物种侵害。",
+    "options": ["八年", "十年", "十二年", "十五年"],
+    "answer": 1,
+    "analysis": "考点：长江禁渔；实施好长江十年禁渔",
+    "tags": ["思政", "生态"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 20,
+    "type": "choice",
+    "question": "(   )工作是为国家立心、为民族立魂的工作。",
+    "options": ["思政教育", "意识形态", "党建工作", "理论宣传"],
+    "answer": 1,
+    "analysis": "考点：意识形态工作；是为国家立心、为民族立魂的工作",
+    "tags": ["思政", "宣传"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 21,
+    "type": "choice",
+    "question": "地球上唯一的双层海是：(      )",
+    "options": ["红海", "里海", "黑海", "波罗的海"],
+    "answer": 2,
+    "analysis": "考点：地理常识；黑海因表层海水盐度低、深层海水盐度高，被称为世界上唯一的双层海。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 22,
+    "type": "choice",
+    "question": "下列著名人物中，主办了生活书店的是：(      )",
+    "options": ["苏步青", "李四光", "陶行知", "邹韬奋"],
+    "answer": 3,
+    "analysis": "考点：历史文化名人；邹韬奋是我国著名的出版家，生活书店由其创办并主办。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 23,
+    "type": "choice",
+    "question": "下列地点，不在丝绸之路上的是:(     )",
+    "options": ["函谷关", "阳关", "玉门关"],
+    "answer": 0,
+    "analysis": "考点：历史地理；丝绸之路的关隘主要是阳关和玉门关，函谷关位于河南，不在传统丝路主线上。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 24,
+    "type": "choice",
+    "question": "在鲁迅的下列作品中,哪一篇不是用第一人称写的:（     ）",
+    "options": ["《社戏》", "《故乡》", "《风波》", "《祝福》", "《孔乙己》"],
+    "answer": 2,
+    "analysis": "考点：文学常识；《风波》使用的是第三人称全知视角，其余四篇均使用了第一人称“我”。",
+    "tags": ["人文知识"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 25,
+    "type": "choice",
+    "question": "世界上最早使用麻醉剂的是我国的哪一位名医?(     )",
+    "options": ["扁鹊", "华佗", "张仲景"],
+    "answer": 1,
+    "analysis": "考点：历史人物；东汉末年名医华佗发明了“麻沸散”，是世界上最早使用麻醉剂进行外科手术的医生。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 26,
+    "type": "choice",
+    "question": "英国科学家弗莱明与哪一种发明有关:(     )",
+    "options": ["狂犬病疫苗", "青霉素", "白日咳疫苗"],
+    "answer": 1,
+    "analysis": "考点：科学史；英国微生物学家亚历山大·弗莱明于1928年发现了青霉素。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 27,
+    "type": "choice",
+    "question": "哪一个国家的首都被称为“欧洲首都”?(      )",
+    "options": ["荷兰", "瑞典", "比利时", "芬兰"],
+    "answer": 2,
+    "analysis": "考点：地理常识；比利时首都布鲁塞尔是欧盟总部及北约总部所在地，被称为“欧洲首都”。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 28,
+    "type": "choice",
+    "question": "我国最早的表演艺术是:（     )",
+    "options": ["曲艺", "歌舞", "戏剧", "杂技"],
+    "answer": 1,
+    "analysis": "考点：文化艺术常识。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 29,
+    "type": "choice",
+    "question": "你知道母亲节是什么时候吗?（      ）",
+    "options": ["五月的第一个星期日", "五月的第二个星期日", "六月的第一个星期日", "六月的第二个星期日"],
+    "answer": 1,
+    "analysis": "考点：生活文化常识；现代母亲节定为每年5月的第二个星期日。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 30,
+    "type": "choice",
+    "question": "舞台艺术片是我国传统戏曲与电影艺术的完美结合。我国于1956年拍摄的第一部舞台艺术片是什么?(    )",
+    "options": ["《梁山伯与祝英台》", "《天仙配》", "《红楼梦》"],
+    "answer": 0,
+    "analysis": "考点：影视艺术史；1953年（注：原题1956年有误，通常认为是1953年）拍摄的越剧电影《梁山伯与祝英台》是新中国第一部彩色舞台艺术片。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 31,
+    "type": "choice",
+    "question": "（     ）可使运算机从外部猎取信息。",
+    "options": ["输入设备", "音箱", "输出没备", "运算器"],
+    "answer": 0,
+    "analysis": "考点：计算机硬件；输入设备（如键盘、鼠标、扫描仪）负责将外部信息输入到计算机中。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 32,
+    "type": "choice",
+    "question": "关于信息的说法,正确的是（      ）。",
+    "options": ["信息不能够脱离载体而存在", "信息都不能储存", "过时的信息不属于信息", "信息差不多上真实的"],
+    "answer": 0,
+    "analysis": "考点：信息的基本特征；信息具有载体依附性，必须依附于某种载体存在。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 33,
+    "type": "choice",
+    "question": "“山东师范大学运算机系”这10个汉字占用(     )个字节。",
+    "options": ["10", "18", "20", "12"],
+    "answer": 2,
+    "analysis": "考点：字符编码；在常用的汉字编码标准（如GBK）中，1个汉字占用2个字节，10个汉字占用20个字节。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 34,
+    "type": "choice",
+    "question": "下列储备器中,容量最大的是(       )。",
+    "options": ["30GB硬盘", "256MB优盘", "1.44MB软磁盘", "64MB内存条"],
+    "answer": 0,
+    "analysis": "考点：存储容量换算；GB > MB，因此30GB硬盘容量最大。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 35,
+    "type": "choice",
+    "question": "下列关于信息高速公路的描述正确的是（     )。",
+    "options": ["一条公路", "一条车流量专门大的高随公路", "一条信息流通量专门大的公路", "一个能够给用户提供大量信息，由通信网、运算机、数据库以及各种日用电子设备组成的完备网络"],
+    "answer": 3,
+    "analysis": "考点：计算机网络；信息高速公路是一个高速信息电子网络，由通信网络、计算机、数据库及日用电子设备组成。",
+    "tags": ["信息技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 36,
+    "type": "choice",
+    "question": "我们要给自己的电脑安装Office2000软件,下列做法正确的是(      )。",
+    "options": ["购买一个通过正版拷贝的0ffice2000软件", "购买一个正版的0ffice2000软件", "购买一个盗版约Ofrice2000软件", "从网上下教一个0ffice2000软件"],
+    "answer": 1,
+    "analysis": "考点：知识产权保护；应使用正版软件，购买正版是尊重知识产权的正确做法。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 37,
+    "type": "choice",
+    "question": "下列属于应用软件的是（     ）。",
+    "options": ["Linux", "DOS", "Windows98", "Word2000"],
+    "answer": 3,
+    "analysis": "考点：软件分类；Word2000是文字处理应用软件，其余三项为操作系统（系统软件）。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 38,
+    "type": "choice",
+    "question": "在 online.jn.sd.cn中，cn的含义是（     ）。",
+    "options": ["中国", "中国大陆", "政府", "工商业"],
+    "answer": 0,
+    "analysis": "考点：域名；.cn 是中国的国家顶级域名。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 39,
+    "type": "choice",
+    "question": "对于计算机来说,信息处理其本质确实是(      )。",
+    "options": ["数据处理", "事件处理", "资源应用", "操纵处理"],
+    "answer": 0,
+    "analysis": "考点：计算机信息处理；计算机信息处理的本质是对数据的处理。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 40,
+    "type": "choice",
+    "question": "关于信息,下列说法不正确的是(     )。",
+    "options": ["信息必须寄存在某种传播媒休之中,如纸张、声波等", "信息本身是一些有形物质,如人体、报纸、书等", "信息必须以某种记录形式丧示出来,如语音、文字、符号声音等", "信息在运算机中是以二进制形式储备和处理的"],
+    "answer": 1,
+    "analysis": "考点：信息的特征；信息是无形的，纸张、书本等是信息的载体，并非信息本身。",
+    "tags": ["信息技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 41,
+    "type": "choice",
+    "question": "网上登载的文章《我们如何应对入世》被数以千计的人们不断地翻阅。这说明信息具有(     ）的特点。",
+    "options": ["共享性", "变换性", "不确定性", "时效性"],
+    "answer": 0,
+    "analysis": "考点：信息的特征；信息可以被多人同时获取和使用，体现了信息的共享性。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 42,
+    "type": "choice",
+    "question": "关于计算机病毒的有关说法,正确的是（      )。",
+    "options": ["计算机病毒不具有攻击性", "计算机病毒是一种专门干扰计算机正常工作的程序", "计算机病毒和感冒病毒一样，属于生物病毒", "计算机病毒不能埋伏和寄生"],
+    "answer": 1,
+    "analysis": "考点：计算机病毒；计算机病毒本质上是一段具有破坏性、传染性的计算机程序代码。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 43,
+    "type": "choice",
+    "question": "下列能有效防止计算机感染病毒的正确做法是(      )",
+    "options": ["经常使用无水酒精擦洗电脑", "经常格式化", "使病毒监测软件处于常开状态", "保持机房的清洁"],
+    "answer": 2,
+    "analysis": "考点：计算机安全；安装并开启防病毒软件是预防计算机病毒的有效措施。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 44,
+    "type": "choice",
+    "question": "在 Word2000中要改变现有文字字体第一步应该是（     ）",
+    "options": ["选定文字的大小", "选定将要改变成何种字体", "选定要改变字体的文字", "选定原先的字体"],
+    "answer": 2,
+    "analysis": "考点：Word基础操作；在Word中编辑排版遵循“先选定，后操作”的原则，改变字体前必须先选中文字。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 45,
+    "type": "choice",
+    "question": "在Word2000中，查找的快捷键是(      )。",
+    "options": ["Ctrl+F", "Alt+F", "Ctrl+H", "Alt+H"],
+    "answer": 0,
+    "analysis": "考点：Word快捷键；Ctrl+F 是查找（Find）的快捷键，Ctrl+H 是替换的快捷键。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 46,
+    "type": "choice",
+    "question": "在网页扫瞄时,要查看访问过的页面，则可点击(      )按钮查找。",
+    "options": ["收藏", "刷新", "历史", "搜素"],
+    "answer": 2,
+    "analysis": "考点：浏览器使用；浏览器的“历史记录”功能用于查看曾经访问过的网页。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 47,
+    "type": "choice",
+    "question": "下列选项属于信息的是(      )。",
+    "options": ["转播2006年世界杯的电磁波", "“改日去春游”", "教师讲课发出的声波", "记录成绩的纸张"],
+    "answer": 1,
+    "analysis": "考点：信息的含义；电磁波、声波、纸张都是信息的载体，而“改日去春游”是具体的消息内容，属于信息。",
+    "tags": ["信息技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 48,
+    "type": "choice",
+    "question": "以下说法中不正确的是(      )。",
+    "options": ["操作系统是最不可缺少的系统软件", "操作系统能够用来管理计算机的各种软硬件资源", "文字处理软件属于一种系统软件", "文字处理软件必须在某种操作系统支持下才能使用"],
+    "answer": 2,
+    "analysis": "考点：软件分类；文字处理软件（如Word）属于应用软件，而非系统软件。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 49,
+    "type": "choice",
+    "question": "ROM与 RAM的主要区别是(     )。",
+    "options": ["断电后，ROM内储存的信息会丢失,而RAM则可长期储存、不会丢失", "断电后,RAM内储存的信息会丢失,而ROM则可长期储存、不会丢失", "ROM是外存储器,RAM是内存储器", "ROM是内存储器，RAM是外存储器"],
+    "answer": 1,
+    "analysis": "考点：存储器；RAM（随机存储器）断电后数据丢失，ROM（只读存储器）断电后数据不会丢失。",
+    "tags": ["信息技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 50,
+    "type": "choice",
+    "question": "汽车虽然方便人们出行，但排出的尾气会造成环境污染，这体现了技术的哪个性质(      ) 。",
+    "options": ["目的性", "专利性", "两面性", "综合性"],
+    "answer": 2,
+    "analysis": "考点：技术的性质；技术既带来便利（正面），又带来环境污染（负面），体现了技术的两面性。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 51,
+    "type": "choice",
+    "question": "自行车由最初的独轮杂耍车发展到现代的多样化自行车经历了许多发展阶段，这体现了(      )。",
+    "options": ["技术的发展离不开设计", "设计与技术的发展无关", "技术总是跟不上设计的脚步", "设计无需技术的支持"],
+    "answer": 0,
+    "analysis": "考点：技术与设计的关系；自行车形态和功能的演变，充分说明技术的发展离不开设计的推动。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 52,
+    "type": "choice",
+    "question": "煮饭时要先洗米、添水、插电，最后按开关,这是一个简单的流程。在这种流程中，做事的时间上的先后顺序称为(       ) 。",
+    "options": ["次序", "先后", "时序", "顺序"],
+    "answer": 2,
+    "analysis": "考点：流程的概念；流程中时间上的先后顺序称为时序。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 53,
+    "type": "choice",
+    "question": "易拉罐上方便拉环的设计是针对产品设计中的哪个方面(     ）",
+    "options": ["形态新颖", "人机关系", "环境因素", "牢固可靠"],
+    "answer": 1,
+    "analysis": "考点：人机关系；方便拉环的设计是为了让人的手能更方便、省力地开启，属于考虑人机关系。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 54,
+    "type": "choice",
+    "question": "金属材料划线的一般步骤为(     )①冲眼②划尺寸线③划轮廓线④划出基准",
+    "options": ["①②③④", "②③④①", "④①②③", "④②③①"],
+    "answer": 3,
+    "analysis": "考点：金属加工工艺；划线的正确步骤是：划出基准(④) → 划尺寸线(②) → 划轮廓线(③) → 冲眼(①)。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 55,
+    "type": "choice",
+    "question": "易碎产品在包装时需要一些特殊的设计方法以防止产品摔碎，这种包装应该侧重于结构的(      )。",
+    "options": ["稳定性", "强度", "美观", "安全"],
+    "answer": 0,
+    "analysis": "考点：结构设计；防止摔碎主要是为了缓冲和防止倾倒，侧重于结构的稳定性与安全性（通常此类题选稳定性或安全，此处原题答案倾向于稳定性/缓冲）。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 56,
+    "type": "choice",
+    "question": "某同学用木料按流程Ⅰ制作了一个简易小书架,结果书架强度不够，难以使用。于是对流程Ⅰ进行了优化，并按优化后的流程Ⅱ重新制作了一个，检验证明按流程Ⅱ制作的书架强度较好。以上实现的流程优化属于(      )。",
+    "options": ["成本优化", "质量优化", "工艺优化", "工期优化"],
+    "answer": 2,
+    "analysis": "考点：流程优化；通过改变连接方式（如使用榫连接代替胶带），提高了产品的强度和质量，属于工艺优化。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 57,
+    "type": "choice",
+    "question": "古建筑多采用“梁柱结构”，当柱与柱之间梁的跨度增大时，则梁的厚度要相应地加大，否则就不足以承受设计所需的重力,这主要反映系统的( )。",
+    "options": ["整体性", "相关性", "环境适应性", "动态性"],
+    "answer": 1,
+    "analysis": "考点：系统的特性；跨度增大要求厚度加大，说明系统内部各要素（梁与柱）之间是相互联系、相互制约的，体现了系统的相关性。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 58,
+    "type": "choice",
+    "question": "尽管昆明的道路建设年年有大的投入，但是随着私家车的不断增加，昆明的交通反而变得越来越拥挤。市政府对整个交通系统进行分析后，决定建设地铁。下列说法正确的是(      )。",
+    "options": ["有了地铁就能对交通系统实现优化", "因为地铁连度快，才实现对交通系统的优化", "因为地铁在地下运行，才实现对交通系统的优化", "必须与其他交通工具及基础设施配套使用，才能实现优化"],
+    "answer": 3,
+    "analysis": "考点：系统优化；系统优化需要综合考虑各种因素，地铁必须与公交、道路等配套设施结合，才能实现交通系统的整体优化。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 59,
+    "type": "choice",
+    "question": "下列属于闭环控制系统的是（      )。",
+    "options": ["自动门的开关控剖", "冰箱的温度控制", "音乐喷泉控制", "红绿灯定时控制"],
+    "answer": 1,
+    "analysis": "考点：控制系统分类；冰箱温度控制有温度传感器进行反馈，属于闭环控制；其余均为开环控制。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 60,
+    "type": "choice",
+    "question": "红外线感应自动开闭的垃圾桶，采用电池供电,当手靠近桶盖时，桶盖自动打开,手远离桶盖后，延时5—6秒桶盖自动关闭。该控制系统的被控对象是(     )",
+    "options": ["桶盖", "红外线检测装置", "机械传动装置和连杆机构", "垃圾桶内桶"],
+    "answer": 0,
+    "analysis": "考点：被控对象；控制系统要控制的目标（最终发生状态改变的那个物体）就是被控对象，在此系统中是桶盖。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 61,
+    "type": "choice",
+    "question": "比较闭环控制系统和开环控制系统，下列判断错误的是(      )",
+    "options": ["开环控制系统的控制精度较低", "开环控制系统无反馈环", "闭环控制系统的抗干扰能力强", "闭环控制系统和开环控制系统都有比较器"],
+    "answer": 3,
+    "analysis": "考点：控制系统的区别；开环控制系统没有反馈，不需要将被控量与给定量进行比较，因此没有比较器。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 62,
+    "type": "choice",
+    "question": "家用可调光台灯，当用手调节旋钮时，灯的亮暗变化会马上反映出来。试分析这一控制系统的类型为(     ) 。",
+    "options": ["自动、机械、闭环控制系统", "手动、电子、闭环控制系统", "自动、电子、开环控制系统", "手动、气动、开环控制系统"],
+    "answer": 1,
+    "analysis": "考点：控制系统类型；人手工调节（手动），利用电子电路实现（电子），有光线/电流反馈（闭环）。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 63,
+    "type": "choice",
+    "question": "闭环控制系统设计的基本要求是(      )。①被控量保持稳定②控制精度符合要求③抗干扰能力强④系统的成本低",
+    "options": ["①②③", "①②④", "②③④", "①②③④"],
+    "answer": 0,
+    "analysis": "考点：闭环控制设计要求；基本要求包括：被控量保持稳定、控制精度符合要求、抗干扰能力强。成本低是普遍要求，但不属于闭环控制的基本特征要求。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 64,
+    "type": "choice",
+    "question": "现在有一款盲人阅读器，通过光电扫描和信号处理，将文字信息转换为语音信息。该产品的设计主要是为了满足(      )。",
+    "options": ["普通人群的需求", "特殊人群的需求", "静态的人的需求", "动态的人的需求"],
+    "answer": 1,
+    "analysis": "考点：人机关系；盲人属于特殊人群，产品的设计满足了特殊人群的需求。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 65,
+    "type": "choice",
+    "question": "李小姐买了一瓶有美白效果的洗面奶，瓶身上除了产品名称是用中文标注的外，其它内容均为英文。使用一星期后，李小姐脸上长出了许多红色小斑点。后来请人对该洗面奶说明书翻译后才了解，原来说明书上指明过敏性肤质不能使用该产品，而李小姐刚好是过敏性肤质。产生问题的原因是（       )",
+    "options": ["说明书没有充分考虑用户阅读的需要", "说明书内容条理不清,说而不明", "说明书的内容没有侧重点", "说明书没有体现产品特点"],
+    "answer": 0,
+    "analysis": "考点：产品说明书；说明书使用纯英文，未考虑国内用户的阅读习惯和需求，导致用户无法看懂警示信息。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 66,
+    "type": "choice",
+    "question": "自行车采用了螺栓、螺母等许多标准件，厂家在设计该类产品时，使用标准件的目的是(      )。",
+    "options": ["提高产品的美观性", "实现通用互换,降低生产成本", "环保和可持续发展", "减少零件数量"],
+    "answer": 1,
+    "analysis": "考点：标准件；使用标准件的核心意义在于统一规格，实现零部件的通用互换，方便维修且能大幅降低制造成本。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 67,
+    "type": "choice",
+    "question": "电磁阀门属于该控制系统的（       )。",
+    "options": ["反馈元件", "输入元件", "执行器", "控制器"],
+    "answer": 2,
+    "analysis": "考点：控制系统的组成；电磁阀门接收控制器的指令，直接驱动被控对象改变状态，属于执行器。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 68,
+    "type": "choice",
+    "question": "下列关于干扰因素对控制系统的作用,说法正确的是:(       ) 。",
+    "options": ["干扰因素仅作用在被控量上", "干扰因素不会作用于开环控制系统", "闭环控制系统中干扰因素的作用都会反映在输出量的变化上", "干扰因素都是可以利用的"],
+    "answer": 2,
+    "analysis": "考点：干扰因素；闭环控制系统因为有反馈，干扰因素引起的变化会被检测到并反映在输出量上，从而进行调节。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 69,
+    "type": "choice",
+    "question": "监控摄像系统被广泛用于记录道路交通实时图像信息。对于监控摄像系统，下列环境因素中不属于干扰因素的是(       )。",
+    "options": ["噪声", "浓雾", "闪电", "沙尘"],
+    "answer": 0,
+    "analysis": "考点：干扰因素；监控摄像系统主要受光学/视线影响，浓雾、闪电的光强、沙尘均会干扰图像，而噪声对图像采集不构成直接干扰。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  }]},{
+        "paperId": 2,
+        "paperName": "信息技术测试（一）",
+        "questions": [
+            {"id":101,"type":"choice","question":"在Word编辑排版中，要删除分节符，可将光标置于分节符前，然后按     键。","options":["Backspace","Delete","Insert","Page Down"],"answer":1,"analysis":"考点：Word分节符；Delete删除光标后方内容","tags":["Word","编辑"],"difficulty":"中等"},
+            {"id":102,"type":"choice","question":"下列关于幻灯片放映的说法中，正确的是","options":["幻灯片放映一旦开始就必须放完才能结束","幻灯片只可从第一张开始放映","幻灯片既可从第一张开始放映，也可从当前页开始放映","幻灯片只可从当前页开始放映"],"answer":2,"analysis":"考点：PPT放映；可从头或从当前页放映","tags":["PPT","放映"],"difficulty":"容易"},
+            {"id":103,"type":"choice","question":"在Excel中，某单元格的公式为“=IF（\"普测考试\">\"普测考试成绩\",TRUE,FALSE)”，其计算结果为","options":["普测考试","普测考试成绩","TRUE","FALSE"],"answer":3,"analysis":"考点：Excel文本比较；字符串比较结果为假","tags":["Excel","函数"],"difficulty":"中等"},
+            {"id":104,"type":"choice","question":"在Excel中，下列说法不正确的是","options":["公式中可以包括函数、引用、运算符和常量","电子表格软件的数据筛选功能包括自动筛选和自定义筛选","取消筛选后，数据表的行状态会自动恢复到筛选前的状态","分类汇总前必须先按分类字段进行排序"],"answer":2,"analysis":"考点：Excel筛选；取消筛选后行可手动恢复","tags":["Excel","筛选"],"difficulty":"中等"},
+            {"id":105,"type":"choice","question":"在PowerPoint中，若要使幻灯片按规定的时间，实现连续自动播放，应进行   设置。","options":["排练计时","幻灯片切换","动画","放映方式"],"answer":0,"analysis":"考点：PPT放映；排练计时实现自动播放","tags":["PPT","放映"],"difficulty":"容易"},
+            {"id":106,"type":"choice","question":"在IE中，可以将     自己喜爱或最常用的网页设置成浏览器的默认主页。","options":["1个","2个","8个","16个"],"answer":0,"analysis":"考点：浏览器；默认主页只能设置1个","tags":["网络","浏览器"],"difficulty":"容易"},
+            {"id":107,"type":"choice","question":"下列关于物联网网关的说法正确的是","options":["负责应用层和网络层之间的数据中转","负责应用层内部不同感知网络之间的数据中转","可以实施远程控制","具备应用层终端结点设备的管理功能"],"answer":0,"analysis":"考点：物联网；网关负责协议与层次转换","tags":["物联网","架构"],"difficulty":"困难"},
+            {"id":108,"type":"choice","question":"下列设备中，     不是多媒体输出设备。","options":["显示器","打印机","扫描仪","投影仪"],"answer":2,"analysis":"考点：硬件；扫描仪是输入设备","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":109,"type":"choice","question":"在Word表格中，单元格","options":["只可以填入文字和数字形式信息","只可以填入文字、数字、图形图片","不可以跟Excel表格一样使用公式","可以使用求和、求平均值等公式"],"answer":3,"analysis":"考点：Word表格；支持简单公式计算","tags":["Word","表格"],"difficulty":"中等"},
+            {"id":110,"type":"choice","question":"在Windows 10系统中，同一盘符上","options":["允许同一文件夹中的文件同名，也允许不同文件夹中的文件同名","不允许同一文件夹中的文件同名，也不允许不同文件夹中的文件同名","允许同一文件夹中的文件同名，不允许不同文件夹中的文件同名","不允许同一文件夹中的文件同名，允许不同文件夹中的文件同名"],"answer":3,"analysis":"考点：系统文件；同文件夹不重名，不同文件夹可以","tags":["操作系统","文件"],"difficulty":"容易"},
+            {"id":111,"type":"choice","question":"下列关于算法特征的描述中，正确的是","options":["算法必须有多个输入","算法的步骤可以无限循环","算法的输出结果必须唯一","算法的每一个步骤都具有明确性"],"answer":3,"analysis":"考点：算法；算法具有有穷性、确定性、可行性","tags":["程序设计","算法"],"difficulty":"中等"},
+            {"id":112,"type":"choice","question":"下列关于信息安全的描述中，错误的是","options":["信息安全包括信息的保密性、完整性和可用性","信息安全仅针对网络环境中的数据，不包括本地存储数据","信息安全是保障信息不被未授权访问、篡改和破坏的过程","信息安全现状日益严峻，需结合技术和管理手段共同防护"],"answer":1,"analysis":"考点：信息安全；安全包含本地与网络数据","tags":["信息安全","基础"],"difficulty":"容易"},
+            {"id":113,"type":"judge","question":"“裸机”是指没有安装任何应用软件的信息技术设备。","options":["正确","错误"],"answer":1,"analysis":"考点：计算机基础；裸机是未装任何软件","tags":["计算机基础","系统"],"difficulty":"容易"},
+            {"id":114,"type":"judge","question":"将JPG图片格式转换为BMP格式，文件大小不会改变。","options":["正确","错误"],"answer":1,"analysis":"考点：多媒体；BMP无压缩，体积变大","tags":["多媒体","格式"],"difficulty":"容易"},
+            {"id":115,"type":"judge","question":"Windows操作系统中的“记事本”程序不仅能编辑纯文本文件，还支持插入图片和复杂表格。","options":["正确","错误"],"answer":1,"analysis":"考点：系统工具；记事本仅支持纯文本","tags":["操作系统","工具"],"difficulty":"容易"},
+            {"id":116,"type":"judge","question":"人工智能是研究、开发用于模拟、延伸和扩展人类智能的理论、方法、技术及应用系统的一门新的技术科学。","options":["正确","错误"],"answer":0,"analysis":"考点：人工智能；定义正确","tags":["人工智能","基础"],"difficulty":"容易"},
+            {"id":117,"type":"judge","question":"人为威胁造成的信息安全问题，仅包括黑客攻击，不涉及内部人员操作失误。","options":["正确","错误"],"answer":1,"analysis":"考点：信息安全；内部失误也属于人为威胁","tags":["信息安全","威胁"],"difficulty":"中等"},
+            {"id":118,"type":"judge","question":"操作系统的“帮助”工具中，部分操作指南会附带视频演示，帮助用户更直观理解操作步骤。","options":["正确","错误"],"answer":0,"analysis":"考点：操作系统；帮助支持视频演示","tags":["操作系统","帮助"],"difficulty":"容易"},
+{"id":201,"type":"choice","question":"信息系统中常见的文件类型有①文本文件；②网页文件；③图像文件；④程序文件","options":["①②③","①②④","②③④","①②③④"],"answer":3,"analysis":"考点：文件类型；四类均为常见类型","tags":["计算机基础","文件"],"difficulty":"容易"},
+            {"id":119,"type":"choice","question":"物联网被称作继计算机、互联网之后世界信息产业的         。它以互联网为基础，将信息社会以人与人为主体的交流延伸到了任何物品，实现了全球范围内人与人、人与物、物与物之间的信息交换和通信。","options":["第二次浪潮","第三次浪潮","第四次浪潮","新生代"],"answer":1,"analysis":"考点：物联网；第三大信息产业浪潮","tags":["物联网","基础"],"difficulty":"中等"},
+            {"id":120,"type":"choice","question":"下列关于Word分栏排版功能的说法中，正确的是","options":["最多可以设9栏","各栏的宽度必须相同，使各栏始终均匀分布","各栏的宽度可以自由设置","各栏之间的间距是固定不可调整的"],"answer":2,"analysis":"考点：Word分栏；栏宽、间距均可自定义","tags":["Word","排版"],"difficulty":"中等"},
+            {"id":121,"type":"choice","question":"在360浏览器中，浏览的网页痕迹存放在         中。","options":["收藏夹","历史记录","网址大全","内存"],"answer":1,"analysis":"考点：浏览器；历史记录存储浏览痕迹","tags":["网络","浏览器"],"difficulty":"容易"},
+            {"id":122,"type":"choice","question":"在Excel2016中，若要将520025作为文本型数据输入单元格，应输入","options":["/520025","'520025","'+520025","\"520025'"],"answer":1,"analysis":"考点：Excel输入；单引号开头为文本","tags":["Excel","基础操作"],"difficulty":"中等"},
+            {"id":123,"type":"choice","question":"用图表表示某班级男生、女生人数所占的百分比，表示效果最好的是","options":["折线图","面积图","饼图","柱形图"],"answer":2,"analysis":"考点：Excel图表；饼图用于占比展示","tags":["Excel","图表"],"difficulty":"容易"},
+            {"id":124,"type":"choice","question":"用金山文档协作编辑文档，需先创建分享文档，然后通过         进行分享。","options":["链接","微信","QQ","用户"],"answer":0,"analysis":"考点：协同办公；通过分享链接协作","tags":["网络","协同办公"],"difficulty":"容易"},
+            {"id":125,"type":"choice","question":"要在PowerPoint的所有幻灯片相同位置同时插入同一张图片，可以使用","options":["插入对象","幻灯片母版","插入图像","幻灯片主题"],"answer":1,"analysis":"考点：PPT母版；母版统一批量设置","tags":["PPT","母版"],"difficulty":"中等"},
+            {"id":126,"type":"choice","question":"计算机常用的输入设备通常是指","options":["键盘和软盘","键盘和显示器","软盘和硬盘","键盘和鼠标"],"answer":3,"analysis":"考点：硬件；键盘鼠标为标准输入","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":127,"type":"choice","question":"PowerPoint 演示文稿的基本组成单元是","options":["文本","图形","超链接","幻灯片"],"answer":3,"analysis":"考点：PPT基础；幻灯片为基本单元","tags":["PPT","基础"],"difficulty":"容易"},
+            {"id":128,"type":"choice","question":"计算机程序的三种基本结构不包括","options":["顺序结构","选择结构","循环结构","跳转结构"],"answer":3,"analysis":"考点：程序结构；三大结构：顺序、选择、循环","tags":["程序设计","基础"],"difficulty":"中等"},
+            {"id":129,"type":"choice","question":"下列不属于信息安全面临的自然威胁的是","options":["地震导致服务器损坏","黑客入侵窃取数据","洪水淹没机房","雷电造成网络设备故障"],"answer":1,"analysis":"考点：信息安全；黑客为人为威胁","tags":["信息安全","威胁"],"difficulty":"中等"},
+            {"id":130,"type":"judge","question":"Windows 10操作系统中，普通用户账户打开系统自带的“计算机管理（核心程序）”窗口时，右上角默认显示最小化、还原/最大化按钮；若该用户被管理员限制了“更改窗口大小”权限，且将窗口切换为“无边框模式”，则此时窗口右上角仅能显示最小化和关闭按钮，无法显示还原/最大化按钮。","options":["正确","错误"],"answer":0,"analysis":"考点：系统权限；权限限制会隐藏还原按钮","tags":["操作系统","权限"],"difficulty":"困难"},
+            {"id":131,"type":"judge","question":"虚拟现实（VR）技术通过计算机生成完全虚拟的三维环境，用户需借助专用设备（如VR头盔）沉浸其中，其核心是“隔绝现实、构建纯虚拟场景”；而增强现实（AR）技术才是在真实环境中叠加虚拟对象实现虚实融合。","options":["正确","错误"],"answer":0,"analysis":"考点：VR/AR；VR纯虚拟，AR叠加现实","tags":["人工智能","VR/AR"],"difficulty":"中等"},
+            {"id":132,"type":"judge","question":"操作系统的用户管理功能中，管理员账户可以修改普通用户的权限，而普通用户无法更改管理员账户的设置。","options":["正确","错误"],"answer":0,"analysis":"考点：系统权限；权限等级不可逆","tags":["操作系统","权限"],"difficulty":"容易"},
+            {"id":133,"type":"judge","question":"人工智能的发展仅经历了一次高潮，目前已进入稳定发展阶段，不再有技术突破的可能。","options":["正确","错误"],"answer":1,"analysis":"考点：AI；多次高潮，持续突破","tags":["人工智能","发展"],"difficulty":"中等"},
+            {"id":134,"type":"judge","question":"信息安全的“可用性”指信息系统可被授权用户随时访问和使用，不会因故障或 attack中断服务。","options":["正确","错误"],"answer":0,"analysis":"考点：信息安全；可用性核心定义","tags":["信息安全","基础"],"difficulty":"容易"},
+            {"id":135,"type":"judge","question":"操作系统的用户管理中，普通用户账户可自行修改账户密码，但无法更改账户类型。","options":["正确","错误"],"answer":0,"analysis":"考点：系统权限；用户权限边界","tags":["操作系统","权限"],"difficulty":"容易"},
+{"id":301,"type":"choice","question":"在Word表格操作中，下列说法正确的是","options":["表格能转换成文本，文本不能转换为表格","表格和文本可以互相转换","文本能转换成表格，表格不能转换成文本","文本与表格不能相互转换"],"answer":1,"analysis":"考点：Word表格；文本与表格可互相转换","tags":["Word","表格"],"difficulty":"容易"},
+            {"id":136,"type":"choice","question":"关于Word中的文本框，下列说法错误的是","options":["可创建文本框间的链接","文本框可以做出三维效果","文本框只能存放文本，不能放置图片","文本框可设置排列方式为“浮于文字上方”"],"answer":2,"analysis":"考点：Word文本框；文本框可放置图片等对象","tags":["Word","对象"],"difficulty":"中等"},
+            {"id":137,"type":"choice","question":"在Windows 10操作系统中，下列文件名非法的是","options":["myfile@1","classl.dat","card\"o1","Basicprogram"],"answer":2,"analysis":"考点：文件命名；文件名不能含双引号","tags":["操作系统","文件"],"difficulty":"中等"},
+            {"id":138,"type":"choice","question":"在Excel 电子表格软件中，在单元格中输入”10-6”，会显示","options":["10-6","4","10月6日","出错"],"answer":2,"analysis":"考点：Excel输入；输入日期格式自动识别","tags":["Excel","数据格式"],"difficulty":"容易"},
+            {"id":139,"type":"choice","question":"在Excel2016中创建图表，下列说法错误的是","options":["独立图表是以一个工作表的形式插在工作簿中","创建图表只可以创建嵌入式图表和独立图表，不可以手工绘制","图表生成之后，可以对图表类型、图表元素等进行编辑","嵌入式图表中的图表与数据是放在不同的工作表内的"],"answer":3,"analysis":"考点：Excel图表；嵌入式图表与数据同工作表","tags":["Excel","图表"],"difficulty":"中等"},
+            {"id":140,"type":"choice","question":"多媒体数据压缩方法也称为数据压缩编码方法，利用H.264压缩视频得到的文件格式是","options":["MP3","MP4","3GP","MOV"],"answer":1,"analysis":"考点：多媒体格式；H.264常用MP4格式","tags":["多媒体","格式"],"difficulty":"中等"},
+            {"id":141,"type":"choice","question":"URL的中文含义是","options":["Web服务器","统一资源定位器","网络地址","域名"],"answer":1,"analysis":"考点：网络基础；URL即统一资源定位器","tags":["网络","基础"],"difficulty":"容易"},
+            {"id":142,"type":"choice","question":"当无线网络连接出现故障时，无线连接图标就会带一个","options":["感叹号","疑问号","叉形符号","小地球标志符号"],"answer":0,"analysis":"考点：网络连接；故障显示感叹号","tags":["网络","故障"],"difficulty":"容易"},
+            {"id":143,"type":"choice","question":"下列说法正确的是","options":["小型机也称为微机","计算机按其处理能力分为模拟计算机和数字计算机","系统主机包括CPU和显示器","计算机系统包括硬件系统和软件系统"],"answer":3,"analysis":"考点：计算机基础；系统由软硬件组成","tags":["计算机基础","系统"],"difficulty":"容易"},
+            {"id":144,"type":"choice","question":"在幻灯片中的背景设置中，“全部应用”按钮的作用是","options":["此背景仅用于当前幻灯片","此背景仅用于最近三张幻灯片","此背景用于当前演示文稿中的全部幻灯片","此背景用于打开的所有演示文稿中的全部幻灯片"],"answer":2,"analysis":"考点：PPT背景；全部应用作用于当前文稿全部幻灯片","tags":["PPT","背景"],"difficulty":"容易"},
+            {"id":145,"type":"choice","question":"下列属于解释型程序设计语言的是 ","options":["C++","Java","Python","C#"],"answer":2,"analysis":"考点：程序设计；Python为解释型语言","tags":["程序设计","语言"],"difficulty":"中等"},
+            {"id":146,"type":"choice","question":"我国针对信息安全制定的基础性法律是 ","options":["《中华人民共和国网络安全法》","《中华人民共和国刑法》","《中华人民共和国电子商务法》","《中华人民共和国计算机信息系统安全保护条例》"],"answer":0,"analysis":"考点：信息安全法规；网络安全法为基础法律","tags":["信息安全","法规"],"difficulty":"中等"},
+            {"id":147,"type":"judge","question":"在Windows 10操作系统中，管理员账户创建了标准用户账户X和来宾账户Y，通过“本地组策略”为用户X授予“安装非微软签名软件”权限，但限制其“修改用户账户密码”；来宾账户Y默认无“访问系统帮助和支持”工具的权限。","options":["正确","错误"],"answer":0,"analysis":"考点：系统权限；用户权限由管理员控制","tags":["操作系统","权限"],"difficulty":"困难"},
+            {"id":148,"type":"judge","question":"使用PowerPoint 2016制作“校园文化节”演示文稿时，若将本地采集的JPG格式校园风景图设置为幻灯片背景并应用虚化效果，插入MP3背景音乐并设置跨幻灯片播放，同时为3张连续幻灯片添加溶解切换效果，保存为.ppt格式后所有效果均能正常保留。","options":["正确","错误"],"answer":1,"analysis":"考点：PPT兼容；旧格式不支持新效果","tags":["PPT","兼容"],"difficulty":"困难"},
+            {"id":149,"type":"judge","question":"大多数操作系统自带的“帮助”工具仅能提供文字说明，无法通过搜索功能快速查找具体操作的指导信息。","options":["正确","错误"],"answer":1,"analysis":"考点：系统帮助；帮助支持搜索功能","tags":["操作系统","帮助"],"difficulty":"容易"},
+            {"id":150,"type":"judge","question":"语音助手（如Siri、小爱同学）是人工智能在自然语言处理领域的典型应用。","options":["正确","错误"],"answer":0,"analysis":"考点：人工智能；语音助手属于NLP应用","tags":["人工智能","应用"],"difficulty":"容易"},
+            {"id":151,"type":"judge","question":"《中华人民共和国计算机信息系统安全保护条例》是我国信息安全领域的基础性法律。","options":["正确","错误"],"answer":1,"analysis":"考点：信息安全法规；网络安全法才是基础法律","tags":["信息安全","法规"],"difficulty":"中等"},
+            {"id":152,"type":"judge","question":"数字媒体信息采集时，手机拍摄的图像文件默认格式均为JPG，无法设置为PNG格式。","options":["正确","错误"],"answer":1,"analysis":"考点：多媒体；手机可设置保存为PNG","tags":["多媒体","图像"],"difficulty":"容易"}
+        ]
+    },
+    {
+        "paperId": 3,
+        "paperName": "信息技术测试（二）",
+        "questions": [
+            {"id":201,"type":"choice","question":"要在 Word表格的某个单元格中绘制一条对角斜线，应该使用","options":["“插入”选项卡中的“符号”命令按钮","“插入”选项卡“表格”列表中的“绘制表格”命令按钮","“开始”选项卡中的“复制”命令按钮","“布局”选项卡“合并”组中的“拆分单元格”命令按钮"],"answer":1,"analysis":"考点：Word表格；用绘制表格工具画斜线","tags":["Word","表格"],"difficulty":"中等"},
+            {"id":202,"type":"choice","question":"在Word中，图像可以以多种环绕形式与文本混排，它提供的环绕方式不包括","options":["四周型","上下型","穿越型","左右型"],"answer":3,"analysis":"考点：Word图文混排；无左右型环绕","tags":["Word","图文混排"],"difficulty":"容易"},
+            {"id":203,"type":"choice","question":"在Excel中，工作表编辑栏的名称框显示为B20，则表示选中的单元格位于","options":["第20行第2列","第2行第20列","第1行第13列","第20行第20列"],"answer":0,"analysis":"考点：Excel单元格；列在前，行在后","tags":["Excel","基础"],"difficulty":"容易"},
+            {"id":204,"type":"choice","question":"各购物网站通过分析用户平时浏览购物软件过程中产生的浏览记录，来进行个性化内容推送，主要应用了大数据处理中的","options":["数据挖掘","预测性分析","数据清洗","智能提取"],"answer":0,"analysis":"考点：大数据；个性化推送属于数据挖掘","tags":["大数据","应用"],"difficulty":"中等"},
+            {"id":205,"type":"choice","question":"下列关于数字媒体技术应用的描述中，正确的是","options":["要将拍摄的AVI格式视频文件转换为体积更小的 MP4 格式，需使用有损压缩技术，转换后视频画质会完全失真","中职学生使用“格式工厂”软件对 WAV 格式音频进行裁剪、调整音量，属于对数字媒体素材的简单编辑处理","JPG格式图片采用无损压缩技术，适合存储需要频繁编辑的设计原图，且支持透明背景效果","制作简单逐帧动画时，必须使用专业动画软件，普通图文编辑工具无法完成基础动画制作"],"answer":1,"analysis":"考点：多媒体处理；裁剪音频属于基础编辑","tags":["多媒体","处理"],"difficulty":"中等"},
+            {"id":206,"type":"choice","question":"PowerPoint自带了许多图片文件，要想将它们插入演示文稿，应使用插入     操作。","options":["相册","剪贴画","图片","形状"],"answer":1,"analysis":"考点：PPT素材；剪贴画为软件自带图片","tags":["PPT","素材"],"difficulty":"容易"},
+            {"id":207,"type":"choice","question":"公检法系统建立DNA数据库，将犯罪人员的身体物件做相关检测后将其DNA录入数据库，给以后破案提供了巨大的帮助，这是     在刑侦方面的应用。","options":["大数据","人工智能","科学计算","物联网"],"answer":0,"analysis":"考点：大数据；数据库应用属于大数据范畴","tags":["大数据","应用"],"difficulty":"中等"},
+            {"id":208,"type":"choice","question":"在进行B超检查时，医生用的探头就是一个传感器，属于物联网的       设备。","options":["感知层","网络层","协议层","应用层"],"answer":0,"analysis":"考点：物联网；传感器属于感知层","tags":["物联网","层次"],"difficulty":"中等"},
+            {"id":209,"type":"choice","question":"计算机系统正常运行不可缺少的软件是","options":["程序设计语言","系统软件","应用软件","文字处理软件"],"answer":1,"analysis":"考点：软件分类；系统软件是系统必需","tags":["计算机基础","软件"],"difficulty":"容易"},
+            {"id":210,"type":"choice","question":"微型计算机使用的键盘中，大写锁定键是","options":["Caps Lock","Alt","Shift","Ctrl"],"answer":0,"analysis":"考点：硬件；Caps Lock为大写锁定","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":211,"type":"choice","question":"下列关于Python变量命名规则的说法中，错误的是","options":["变量名可以包含字母、数字和下划线","变量名可以以数字开头","变量名区分大小写","变量名不能是Python关键字"],"answer":1,"analysis":"考点：Python；变量名不能以数字开头","tags":["Python","基础"],"difficulty":"容易"},
+            {"id":212,"type":"choice","question":"下列行为中，体现良好信息安全和隐私保护意识的是","options":["在公共Wi-Fi 环境下输入银行卡密码","随意点击陌生邮件中的附件链接","定期更换社交账号和支付平台密码","将个人身份证照片随意发送至微信群"],"answer":2,"analysis":"考点：信息安全；定期修改密码为安全习惯","tags":["信息安全","习惯"],"difficulty":"容易"},
+            {"id":213,"type":"judge","question":"在Windows10系统中，通常情况下，删除的文件或文件夹会被放入回收站。","options":["正确","错误"],"answer":0,"analysis":"考点：操作系统；删除默认进回收站","tags":["操作系统","文件"],"difficulty":"容易"},
+            {"id":214,"type":"judge","question":"在PowerPoint中查找内容，可以单击“查找”图标。","options":["正确","错误"],"answer":0,"analysis":"考点：PPT；支持查找内容","tags":["PPT","编辑"],"difficulty":"容易"},
+            {"id":215,"type":"judge","question":"网络资源获取时，通过搜索引擎检索到的信息均经过验证，可直接用于学习和工作，无须进一步甄别。","options":["正确","错误"],"answer":1,"analysis":"考点：网络信息；网络信息需甄别","tags":["网络","信息"],"difficulty":"容易"},
+            {"id":216,"type":"judge","question":"人工智能技术只能应用于高科技领域，无法融入日常生活和传统行业。","options":["正确","错误"],"answer":1,"analysis":"考点：人工智能；AI融入各行业","tags":["人工智能","应用"],"difficulty":"容易"},
+            {"id":217,"type":"judge","question":"信息安全“最小权限原则”要求用户在完成工作后，需及时注销账号，避免权限被滥用。","options":["正确","错误"],"answer":0,"analysis":"考点：信息安全；最小权限原则要求权限最小化并及时注销","tags":["信息安全","原则"],"difficulty":"中等"},
+            {"id":218,"type":"judge","question":"Windows系统的“计算器”程序仅能进行加减乘除基础运算，无法完成三角函数、对数等复杂计算。","options":["正确","错误"],"answer":1,"analysis":"考点：系统工具；计算器支持科学计算","tags":["操作系统","工具"],"difficulty":"容易"},
+            {"id":219,"type":"choice","question":"文件或文件夹通常有三种属性，但不包括","options":["隐藏","读写","存档","只读"],"answer":1,"analysis":"考点：文件属性；属性为只读、隐藏、存档","tags":["操作系统","文件"],"difficulty":"容易"},
+            {"id":220,"type":"choice","question":"下列不属于物联网具有的典型特征的是","options":["数据互联互通能力","信息智能处理能力","物体全面感知能力","高速精确计算能力"],"answer":3,"analysis":"考点：物联网；计算能力不是物联网典型特征","tags":["物联网","特征"],"difficulty":"中等"},
+            {"id":221,"type":"choice","question":"在Word的下列操作中，不能将整个表格设置为页面居中的是","options":["选定整个表格，单击“表格工具/布局”选项卡中的“水平居中”按钮","单击任意单元格，通过“表格属性”对话框设置表格对齐方式为“居中”","通过在表格左侧拖动鼠标选中所有行，单击“段落”功能区中的“居中”按钮","选定整个表格，单击“段落”功能区中的“居中”按钮"],"answer":2,"analysis":"考点：Word表格；行居中不等于表格页面居中","tags":["Word","表格"],"difficulty":"中等"},
+            {"id":222,"type":"choice","question":"在 Word 中，下列关于文字设置的说法正确的是","options":["默认字体有宋体、楷体、隶书","利用功能区“字体”组中的“加粗”按钮可以设置字体的颜色","打开“字体”对话框，可以设置字符间距","打开“段落”对话框，可以设置字符间距"],"answer":2,"analysis":"考点：Word排版；字符间距在字体对话框","tags":["Word","排版"],"difficulty":"中等"},
+            {"id":223,"type":"choice","question":"在Excel 2016 中，已知在(B1:B10)中已输入了数值型数据，要求在 B11 中得出如下结果：当(B1:B10)中的平均值不小于60时，B11的值为“合格”，否则为“不合格”。则B11单元格应使用的公式为","options":["=if(Max(B1:B10)>=60,\"合格\",\"不合格\")","=if(Average(B1:B10)>=60,\"合格\",\"不合格\")","=if(Min(B1:B10)>=60,\"合格\",\"不合格\")","=if(Count(B1:B10)>=60,\"合格\",\"不合格\")"],"answer":1,"analysis":"考点：Excel函数；Average求平均值","tags":["Excel","函数"],"difficulty":"中等"},
+            {"id":224,"type":"choice","question":"通过网络爬虫等方法获取数据信息的过程，属于大数据采集方法中的","options":["离线采集","实时采集","互联网采集","合作采集"],"answer":2,"analysis":"考点：大数据；爬虫属于互联网采集","tags":["大数据","采集"],"difficulty":"中等"},
+            {"id":225,"type":"choice","question":"“科大讯飞”是一款       的商业工具软件。","options":["视频格式转音频格式","音频格式转视频格式","文本格式转音频格式","音频格式转文本格式"],"answer":3,"analysis":"考点：多媒体；讯飞主打语音转文字","tags":["多媒体","语音"],"difficulty":"容易"},
+            {"id":226,"type":"choice","question":"在PowerPoint 中，要使幻灯片在放映时实现在不同幻灯片之间的跳转，需要为其设置","options":["动作按钮","动画","排练计时","录制旁白"],"answer":0,"analysis":"考点：PPT交互；动作按钮实现跳转","tags":["PPT","交互"],"difficulty":"容易"},
+            {"id":227,"type":"choice","question":"以高性能高端路由交换机为核心设备组成的网络叫","options":["广域网","城域网","小型家庭网","校园网"],"answer":1,"analysis":"考点：网络；城域网以高端路由交换机为核心","tags":["网络","分类"],"difficulty":"困难"},
+            {"id":228,"type":"choice","question":"下列不属于CPU的性能指标的是","options":["主频","品牌","缓存","字长"],"answer":1,"analysis":"考点：硬件；品牌不是性能指标","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":229,"type":"choice","question":"Cache 的中文名称是","options":["只读存储器","可编程只读存储器","高速缓冲存储器","缓冲器"],"answer":2,"analysis":"考点：硬件；Cache为高速缓存","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":230,"type":"choice","question":"在 Python中，执行语句“print(\"3+5=\",3+5)” 的输出结果是 ","options":["3+5=8","\"3+5=\"8","3+5=3+5","8"],"answer":0,"analysis":"考点：Python；输出字符串与计算结果","tags":["Python","输出"],"difficulty":"容易"},
+            {"id":231,"type":"choice","question":"网络安全等级保护制度将我国信息系统的安全保护等级分为","options":["3级","4级","5级","6级"],"answer":2,"analysis":"考点：信息安全；等保分5级","tags":["信息安全","法规"],"difficulty":"中等"},
+            {"id":232,"type":"judge","question":"修复系统时，可使用操作系统自带的工具，也可使用专用的U盘。","options":["正确","错误"],"answer":0,"analysis":"考点：系统维护；支持多种修复方式","tags":["操作系统","维护"],"difficulty":"中等"},
+            {"id":233,"type":"judge","question":"关闭PowerPoint时，如果不保存修改过的文档，则会产生系统错误、修改的内容丢失、下次PowerPoint无法正常启动等后果。","options":["正确","错误"],"answer":1,"analysis":"考点：Office；不保存仅丢失内容，不影响系统","tags":["PPT","操作"],"difficulty":"容易"},
+            {"id":234,"type":"judge","question":"Word文档打印前，可通过“打印预览”功能查看文档排版效果，避免因格式问题导致打印错误。","options":["正确","错误"],"answer":0,"analysis":"考点：Word；支持打印预览","tags":["Word","打印"],"difficulty":"容易"},
+            {"id":235,"type":"judge","question":"机器学习是人工智能的核心技术之一，其本质是让计算机在没有明确编程的情况下自主学习和改进。","options":["正确","错误"],"answer":0,"analysis":"考点：人工智能；机器学习为核心技术","tags":["人工智能","基础"],"difficulty":"容易"},
+            {"id":236,"type":"judge","question":"网络安全等级保护第四级信息系统，适用于仅内部使用、无敏感信息的小型企业系统。","options":["正确","错误"],"answer":1,"analysis":"考点：信息安全；四级为重要系统","tags":["信息安全","等保"],"difficulty":"中等"},
+            {"id":237,"type":"judge","question":"操作系统中，普通用户账户可以查看但不能修改其他普通用户的账户名称。","options":["正确","错误"],"answer":0,"analysis":"考点：系统权限；普通用户权限受限","tags":["操作系统","权限"],"difficulty":"中等"},
+            {"id":238,"type":"choice","question":"双机直连局域网操作错误的是","options":["用网线将两台计算机直连","IP设置为192.68.1.1","IP设置为192.168.1.2","通过微信传送文件"],"answer":1,"analysis":"考点：局域网；IP网段设置错误","tags":["网络","局域网"],"difficulty":"中等"},
+            {"id":239,"type":"choice","question":"在Word中，下列关于视图功能的描述正确的是","options":["页面视图仅能显示垂直标尺和页眉页脚，无法查看多栏排版","大纲视图适合调整结构，可查看页眉页脚","Web版式视图不显示页眉页脚，不支持多栏精确预览","草稿视图可清晰呈现文本框与分栏效果"],"answer":2,"analysis":"考点：Word视图；Web视图不显示页眉页脚","tags":["Word","视图"],"difficulty":"中等"},
+            {"id":240,"type":"choice","question":"Excel2016中，新建工作簿的快捷键是","options":["Ctrl+N","Ctrl+O","Ctrl+S","Ctrl+P"],"answer":0,"analysis":"考点：Excel快捷键；Ctrl+N新建","tags":["Excel","快捷键"],"difficulty":"容易"},
+            {"id":241,"type":"choice","question":"函数COUNT(8,9,\"hunan\")的返回值是","options":["7","9","2","hunan"],"answer":2,"analysis":"考点：Excel函数；COUNT只统计数字","tags":["Excel","函数"],"difficulty":"中等"},
+            {"id":242,"type":"choice","question":"在Word中，关于文档打印装订相关的设置，下列说法错误的是 ","options":["要设置装订线的位置和边距数值，需在“页边距”设置界面中操作","设置装订线后，文档的可编辑区域会相应缩小","“纸张大小”选项可调整纸张的尺寸规格，与装订线的位置和边距设置直接相关","若需设置“双面打印并自动居中装订”，需先配置装订线参数"],"answer":2,"analysis":"考点：Word打印；纸张大小与装订无直接关系","tags":["Word","打印"],"difficulty":"中等"},
+            {"id":243,"type":"choice","question":"在PPT幻灯片中插入“音频”，下列说法正确的是","options":["幻灯片中插入的声音，只能在该张幻灯片显示时播放","插入的音频可以跨幻灯片播放，但不能循环","插入的音频既可以跨幻灯片播放，也可以循环播放","插入的音频在单击鼠标后就会停止播放"],"answer":2,"analysis":"考点：PPT音频；可跨幻灯片循环播放","tags":["PPT","音频"],"difficulty":"容易"},
+            {"id":244,"type":"choice","question":"下列关于演示文稿的描述中，正确的是","options":["演示文稿导出的文件必须在安装了演示文稿软件的机器上播放","通过”排练计时”功能可以实现幻灯片的自动播放","动画效果只包括进入效果和退出效果两种","只能用超链接实现幻灯片的跳转"],"answer":1,"analysis":"考点：PPT；排练计时实现自动放映","tags":["PPT","放映"],"difficulty":"容易"},
+            {"id":245,"type":"choice","question":"在Window操作系统中，将打开的窗口拖动到屏幕顶端，窗口会","options":["最小化","最大化","关闭","消失"],"answer":1,"analysis":"考点：系统操作；拖到顶端自动最大化","tags":["操作系统","窗口"],"difficulty":"容易"},
+            {"id":246,"type":"choice","question":"为了接入并正常使用Internet，下列选项中，肯定不需要的是","options":["账号","光纤或网线","调制解调器","网线检测仪"],"answer":3,"analysis":"考点：网络；网线检测仪非必需","tags":["网络","接入"],"difficulty":"容易"},
+            {"id":247,"type":"choice","question":"下列 Python 运算符中，优先级最高的是 ","options":["+ (加法)","* (乘法)","> (大于)","and (逻辑与)"],"answer":1,"analysis":"考点：Python；乘号优先级高于加减与逻辑","tags":["Python","运算符"],"difficulty":"中等"},
+            {"id":248,"type":"choice","question":"下列关于数据安全的说法中，正确的是 ","options":["数据安全仅需保障数据不被泄露，无须关注数据完整性","数据备份是保障数据安全的重要手段之一","公开的公共数据无须进行安全防护","数据安全与个人隐私无关"],"answer":1,"analysis":"考点：信息安全；数据备份是关键措施","tags":["信息安全","数据安全"],"difficulty":"容易"},
+            {"id":249,"type":"judge","question":"当鼠标指针指向文档左侧的空白处时，连续三次单击鼠标左键可以选定整段文档。","options":["正确","错误"],"answer":0,"analysis":"考点：Word操作；三击选中段落","tags":["Word","操作"],"difficulty":"中等"},
+            {"id":250,"type":"judge","question":"ACDSee是一款计算机动画制作软件。","options":["正确","错误"],"answer":1,"analysis":"考点：多媒体；ACDSee是看图软件","tags":["多媒体","软件"],"difficulty":"容易"},
+            {"id":251,"type":"judge","question":"文档的“修订”功能仅能显示修改痕迹，无法接受或拒绝具体的修改内容。","options":["正确","错误"],"answer":1,"analysis":"考点：Word；修订可接受或拒绝修改","tags":["Word","修订"],"difficulty":"容易"},
+            {"id":252,"type":"judge","question":"人工智能的发展不需要遵循伦理规范，只需追求技术的快速突破即可。","options":["正确","错误"],"answer":1,"analysis":"考点：人工智能；AI必须遵循伦理规范","tags":["人工智能","伦理"],"difficulty":"容易"},
+            {"id":253,"type":"judge","question":"手机本地存储的通讯录信息不属于信息安全的保护对象。","options":["正确","错误"],"answer":1,"analysis":"考点：信息安全；通讯录属于隐私数据","tags":["信息安全","隐私"],"difficulty":"容易"},
+            {"id":254,"type":"judge","question":"网络资源检索时，使用多个关键词组合搜索，能有效提高检索结果的精准度。","options":["正确","错误"],"answer":0,"analysis":"考点：网络搜索；多关键词更精准","tags":["网络","搜索"],"difficulty":"容易"}
+        ]
+    },{
+        "paperId": 4,
+        "paperName": "职业技能测试（二）",
+        "questions": [
+  {
+    "id": 301,
+    "type": "choice",
+    "question": "2，6，13，24，41，（    ）",
+    "options": ["68", "54", "47", "58"],
+    "answer": 0,
+    "analysis": "考点：数字推理；规律为 1²+20=2，2²+21=6，3²+22=13，4²+23=24，5²+24=41，所以下一项是 6²+25=68",
+    "tags": ["判断推理", "数字推理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 302,
+    "type": "choice",
+    "question": "下列说法中正确的是（    ）",
+    "options": ["合情推理就是正确的推理", "归纳推理是从一般到特殊的推理过程（反了）", "合情推理就是归纳推理（还有类比推理）", "类比推理是从特殊到特殊的推理过程"],
+    "answer": 3,
+    "analysis": "考点：逻辑推理基础；类比推理是由特殊到特殊的推理过程。",
+    "tags": ["判断推理", "逻辑基础"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 303,
+    "type": "choice",
+    "question": "从 A，B，C 三个同学中选 2 名代表学校到省里参加全国高中数学联赛，A 被选中的概率是（    ）",
+    "options": ["1", "2/3", "1/2", "1/3"],
+    "answer": 1,
+    "analysis": "考点：概率计算；从3人中选2人共有3种组合，包含A的组合有2种，概率为2/3。",
+    "tags": ["数学运算", "概率"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 304,
+    "type": "choice",
+    "question": "甲、乙、丙三人中，一人是董事长，一人是总经理，一人是秘书，已知：丙的年龄比秘书的大，甲的年龄和总经理不同；总经理的年龄比乙小，根据以上情况，下列判断正确的是（    ）",
+    "options": ["甲是董事长，乙是秘书，丙是总经理", "甲是秘书，乙是总经理，丙是董事长", "甲是秘书，乙是董事长，丙是总经理", "甲是总经理，乙是秘书，丙是董事长"],
+    "answer": 2,
+    "analysis": "考点：逻辑推理；由题意推断年龄大小，进而推断职位。正确答案为C。",
+    "tags": ["判断推理", "逻辑分析"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 305,
+    "type": "choice",
+    "question": "三个学生在校园内踢足球，砰的一声，不知道是谁踢的球把教室窗户的玻璃打破了，老师跑来一看，问是谁打破的。甲说“是乙打破的”。乙说“是丙打破的”。丙说“是乙打破的”。如果这三个孩子中只有一个说了实话，那么打破玻璃的人是（    ）",
+    "options": ["甲", "乙", "丙", "不能确定"],
+    "answer": 2,
+    "analysis": "考点：真假话推理；甲和丙的话相同，但只有一人说实话；所以甲丙的话必定为假，乙说的话为真，由此推断打破玻璃的是丙。",
+    "tags": ["判断推理", "真假话"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 306,
+    "type": "choice",
+    "question": "甲、乙、丙、丁四名游客到重庆旅游，他们都只去了磁器口古镇、洪崖洞民俗风貌区、李子坝轻轨穿楼及乌江画廊四个网红景点中的某2个，已知甲去了磁器口古镇，乙与甲没有去过相同的景点，丁与丙也没有去过相同的景点，则四人中去过磁器口古镇的人数是（    ）",
+    "options": ["1", "2", "3", "4"],
+    "answer": 1,
+    "analysis": "考点：逻辑推理；根据题意进行组合推理。",
+    "tags": ["判断推理", "逻辑分析"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 307,
+    "type": "choice",
+    "question": "中国古代数学著作《算法统综》中有这样一个问题：“三百七十八里关，初步健步不为难，次日脚痛减一半，六朝才得到其关，要见次日行里数，请公仔细算相还”，其大意为：“有一个人走 378 里路，第一天健步行走，从第二天起脚痛每天走的路程为前一天的一半，走了 6 天后到达目的地”，则该人第 4 天走的路程为（    ）",
+    "options": ["96 里", "48 里", "24 里", "12 里"],
+    "answer": 2,
+    "analysis": "考点：等比数列；设第一天走 x 里，则总路程为 x(1-(1/2)^6)/(1-1/2) = 378，解得 x = 192。第4天走 192*(1/2)^3 = 24 里。",
+    "tags": ["数学运算", "数列"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 308,
+    "type": "choice",
+    "question": "某电视综艺节目中，设置了如下游戏环节：工作人员分别在四位嘉宾甲、乙、丙、丁的后背贴上一张数字条， 数字是1或2中的一个，每人都能看到别人的号码，但看不到自己后背的号码。丁问：“你们每人看到几个1、几个2”。甲说：“我看到三个1”，乙说：我看到一个2 和两个1，丙说：“我看到三个 2”。三个回答中，只有号码是1的嘉宾说了假话，则号码为2的嘉宾有(    )",
+    "options": ["乙", "甲、乙", "丁", "乙、丁"],
+    "answer": 3,
+    "analysis": "考点：逻辑推理。",
+    "tags": ["判断推理", "逻辑分析"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 309,
+    "type": "choice",
+    "question": "2/3,4/5,6/7,8/9，……的第 10 项是（    ）",
+    "options": ["14/15", "16/17", "18/19", "20/21"],
+    "answer": 3,
+    "analysis": "考点：数列规律；分子为2的倍数，分母为分子+1。第10项分子为20，分母为21。",
+    "tags": ["判断推理", "数字推理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 310,
+    "type": "choice",
+    "question": "已知小明需从几门课程中选择一门作为自己的特长课程来学习，小明选完课后，同寝室的其他3位同学根据小明的兴趣爱好对小明选择的课程猜测如下：甲说：“小明选的不是篮球，选的是排球”；乙说：小明选的不是排球，选的是书法；丙说：“小明选的不是排球，选得也不是现代舞”。已知3人中有1人说得全对，有一人说对了一半，有1人说得全不对，由此可推测小明选择的（    ）",
+    "options": ["可能是书法", "可能是现代舞", "一定是排球", "可能是篮球"],
+    "answer": 3,
+    "analysis": "考点：逻辑推理。",
+    "tags": ["判断推理", "真假话"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 311,
+    "type": "choice",
+    "question": "甲、乙、丙做同一道题，仅有一人做对。甲说：“我做错了。”乙说：“甲做对了。”丙说：“我做错了。” 如果三人中只有一人说的是真的，以下判断正确的是（    ）",
+    "options": ["甲做对了", "乙做对了", "丙做对了", "以上说法均不对"],
+    "answer": 2,
+    "analysis": "考点：真假话推理；甲和乙的话矛盾，必有一真一假。丙的话必为假，即丙做对了。",
+    "tags": ["判断推理", "真假话"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 312,
+    "type": "choice",
+    "question": "动物：鸟（    ）",
+    "options": ["森林：树", "植物：水稻", "床：木头", "江苏：南京"],
+    "answer": 1,
+    "analysis": "考点：类比推理；种属关系。鸟属于动物，水稻属于植物。",
+    "tags": ["判断推理", "类比推理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 313,
+    "type": "choice",
+    "question": "兼济天下：独善其身（    ）",
+    "options": ["扶危济困：落井下石", "前车之鉴：后顾之忧", "出双入对：形单影只", "好高骛远：好大喜功"],
+    "answer": 2,
+    "analysis": "考点：类比推理；反义关系。兼济天下与独善其身是反义，出双入对与形单影只是反义。",
+    "tags": ["判断推理", "类比推理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 314,
+    "type": "choice",
+    "question": "宗教：基督教：新教（    ）",
+    "options": ["国家：民族：区域", "政府：机关：机构", "心灵：心情：亲情", "水果：苹果：红富士"],
+    "answer": 3,
+    "analysis": "考点：类比推理；包含关系。基督教是宗教的一种，新教是基督教的一派。苹果是水果，红富士是苹果的一个品种。",
+    "tags": ["判断推理", "类比推理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 315,
+    "type": "choice",
+    "question": "语言：工具：交流",
+    "options": ["轮船：钢铁：运输", "书籍：阅读：印刷", "会议：方式：工作", "筷子：吃饭：餐具"],
+    "answer": 2,
+    "analysis": "考点：类比推理；语言是一种工具，功能是交流。",
+    "tags": ["判断推理", "类比推理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 316,
+    "type": "choice",
+    "question": "找规律1，3，3，5，7，9，13，15，（   ）",
+    "options": ["19，21", "21，23", "19，23", "27，30"],
+    "answer": 1,
+    "analysis": "考点：数字推理；奇数项：1, 3, 7, 13, (21) 作差得2,4,6,8；偶数项：3, 5, 9, 15, (23) 作差得2,4,6,8。",
+    "tags": ["判断推理", "数字推理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 317,
+    "type": "choice",
+    "question": "有一队骆驼，4只前面有4只，4只后面有4只，4只中间有4只，想一想这队骆驼最少有多少只？（   ）",
+    "options": ["8只", "12只", "16只", "20只"],
+    "answer": 0,
+    "analysis": "考点：智力推理。",
+    "tags": ["判断推理", "逻辑分析"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 318,
+    "type": "choice",
+    "question": "与“教师：教室”类似的是（   ）",
+    "options": ["士兵：子弹", "士兵：战斗", "战场：战士", "士兵：军营"],
+    "answer": 3,
+    "analysis": "考点：类比推理；职业与工作场所的对应关系。教师在教室工作，士兵在军营生活/工作。",
+    "tags": ["判断推理", "类比推理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 319,
+    "type": "choice",
+    "question": "被称为“壁画之都”的是哪个城市： (    )",
+    "options": ["墨尔本", "墨西哥城", "敦煌"],
+    "answer": 1,
+    "analysis": "考点：地理文化常识；墨西哥城因拥有大量精美壁画，被称为“壁画之都”。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 320,
+    "type": "choice",
+    "question": "某学校校园文化周期间举办世界古钱币展，如果按出现的时间顺序布置展区的话，最先展出的纸币应是(    )",
+    "options": ["英镑", "美元", "交子", "人民币"],
+    "answer": 2,
+    "analysis": "考点：历史文化常识；北宋时期四川地区出现的“交子”是世界上最早的纸币。",
+    "tags": ["人文知识", "历史"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 321,
+    "type": "choice",
+    "question": "美是人类永恒的追求，真正的美(      )",
+    "options": ["只是举止的优雅", "是衣着的时", "只是学识的丰富", "是外在美和内在美的统一"],
+    "answer": 3,
+    "analysis": "考点：思想道德；真正的美是外在美与内在美（心灵美、学识等）的统一。",
+    "tags": ["思政", "道德"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 322,
+    "type": "choice",
+    "question": "评论界把海明威的长篇小说(    ）看作是“迷惘的一代”的宣言。",
+    "options": ["《永别了，武器》", "《太阳照样升起》", "《丧钟为谁而鸣》", "《老人与海》"],
+    "answer": 1,
+    "analysis": "考点：文学常识；《太阳照样升起》是海明威的第一部长篇小说，被视为“迷惘的一代”的宣言。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 323,
+    "type": "choice",
+    "question": "情绪是本能，每个人每天都会有各种情绪产生。情绪产生之后，是被情绪(   ），还是运用情绪优化自己，这就考验一个人的情商。情商绝对不是逢迎拍马，口是心非，(   ），也绝对不是否认自己的情绪，或者认为自己不高兴是无所谓的。",
+    "options": ["摆布 滔滔不绝", "俘虏 巧言令色", "折磨 人云亦云", "控制 能言善辩"],
+    "answer": 1,
+    "analysis": "考点：言语理解；第一空与“运用”相对，填“俘虏”；第二空与“逢迎拍马，口是心非”并列，填“巧言令色”。",
+    "tags": ["言语理解"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 324,
+    "type": "choice",
+    "question": "1946 年 2 月 15 日在美国诞生了世界上第一台电子计算机，它的诞生地是： (       )",
+    "options": ["宾夕法尼亚大学", "哈佛大", "麻省理工学院", "耶鲁大学"],
+    "answer": 0,
+    "analysis": "考点：计算机发展史；世界上第一台电子计算机ENIAC诞生于美国宾夕法尼亚大学。",
+    "tags": ["信息技术", "历史"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 325,
+    "type": "choice",
+    "question": "申请技术发明专利的正确流程是a.提交申请阶段；b.受理阶段；c.初审阶段；d.发明专利申请公布阶段；e.发明专利申请实质审查阶段；f.授权阶段。(       ）",
+    "options": ["abcdef", "abdcef", "abcedf", "abcefd"],
+    "answer": 0,
+    "analysis": "考点：通用技术；专利申请流程：提交申请(a) -> 受理(b) -> 初审(c) -> 公布(d) -> 实质审查(e) -> 授权(f)。",
+    "tags": ["通用技术", "知识产权"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 326,
+    "type": "choice",
+    "question": "我国目前钻石的著名产地有(    )",
+    "options": ["内蒙古", "河南", "贵州", "辽宁"],
+    "answer": 3,
+    "analysis": "考点：地理常识；我国钻石的著名产地是辽宁瓦房店。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 327,
+    "type": "choice",
+    "question": "关于二氧化硫，下列说法错误的是(    ）",
+    "options": ["是酸性气体", "是无色无味的气体", "具有漂白性", "密度比空气大"],
+    "answer": 1,
+    "analysis": "考点：化学常识；二氧化硫是无色但有刺激性气味的气体。",
+    "tags": ["科学常识", "化学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 328,
+    "type": "choice",
+    "question": "下列哪项赛事是四大网球赛事之一(        )",
+    "options": ["迈阿密网球大师赛", "戴维斯杯网球", "澳大利亚网球公开赛"],
+    "answer": 2,
+    "analysis": "考点：体育常识；四大满贯网球赛事包括澳网、法网、温网、美网。",
+    "tags": ["人文知识", "体育"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 329,
+    "type": "choice",
+    "question": "我国大陆海岸线长达 (    )公里",
+    "options": ["17000", "17500", "18000"],
+    "answer": 2,
+    "analysis": "考点：地理常识；我国大陆海岸线长达1.8万多公里。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 330,
+    "type": "choice",
+    "question": "机动车右转向灯亮表示(    )",
+    "options": ["右转弯", "左转弯", "危险报警闪光", "加速行驶"],
+    "answer": 0,
+    "analysis": "考点：生活常识；转向灯亮起表示车辆即将转向。",
+    "tags": ["生活常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 331,
+    "type": "choice",
+    "question": "苏轼在《念奴娇•赤壁怀古》中提到了“羽扇纶巾，谈笑间，樯橹灰飞烟灭”。“羽扇纶巾”形容的是(    ）",
+    "options": ["诸葛亮", "周瑜", "曹操", "徐庶"],
+    "answer": 1,
+    "analysis": "考点：文学常识；这里描写的是周瑜儒将的风度。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 332,
+    "type": "choice",
+    "question": "下列著名战役与战争对应错误的是(    ）",
+    "options": ["秋收起义——土地革命", "平型关大捷——解放战争", "百团大战——抗日战争", "上甘岭战役——抗美援朝"],
+    "answer": 1,
+    "analysis": "考点：历史常识；平型关大捷发生在抗日战争时期，不是解放战争。",
+    "tags": ["人文知识", "历史"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 333,
+    "type": "choice",
+    "question": "(    ）是情绪产生的基础。",
+    "options": ["需要", "动机", "行为", "认知"],
+    "answer": 0,
+    "analysis": "考点：心理学常识；需要是情绪产生的基础。",
+    "tags": ["人文知识", "心理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 334,
+    "type": "choice",
+    "question": "与其他职业行为准则相比，职业道德的特征包括(    ）",
+    "options": ["超稳定性", "适用范围上的无限性", "表现形式上的单一性", "一定的强制性"],
+    "answer": 3,
+    "analysis": "考点：职业道德；职业道德具有行业性、广泛性、实用性和一定的强制性。",
+    "tags": ["思政", "职业道德"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 335,
+    "type": "choice",
+    "question": "“红杏枝头春意闹”属于： (        )",
+    "options": ["通感", "夸张", "烘托", "象征"],
+    "answer": 0,
+    "analysis": "考点：文学修辞；“闹”字将视觉形象转化为听觉感受，使用了通感的修辞手法。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 336,
+    "type": "choice",
+    "question": "在股份公司中，(    )为公司的法定代表人。",
+    "options": ["总经理", "财务总监", "董事长", "经理"],
+    "answer": 2,
+    "analysis": "考点：法律常识；根据《公司法》，董事长通常是公司的法定代表人。",
+    "tags": ["法律常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 337,
+    "type": "choice",
+    "question": "古人用“父母教，须敬听；父母责，须顺承”来劝谕人们尊敬父母，这句话出自(    ）",
+    "options": ["《弟子规》", "《三字经》", "《千字文》", "《笠翁对韵》"],
+    "answer": 0,
+    "analysis": "考点：国学常识；出自《弟子规》。",
+    "tags": ["人文知识", "国学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 338,
+    "type": "choice",
+    "question": "许多地方环境污染发展成为社会公害，这是(    )。",
+    "options": ["渔猎时代的环境问题", "新石器时期的环境问题", "农业社会的环境问题", "工业社会的环境问题"],
+    "answer": 3,
+    "analysis": "考点：环保常识；环境污染成为社会公害主要发生在工业社会之后。",
+    "tags": ["人文知识", "环保"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 339,
+    "type": "choice",
+    "question": "在西班牙什么花象征着富贵吉祥 (        )",
+    "options": ["郁金香", "玫瑰花", "杜鹃花", "石榴花"],
+    "answer": 3,
+    "analysis": "考点：世界文化常识；在西班牙，石榴花被视为富贵吉祥的象征。",
+    "tags": ["人文知识", "文化"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 340,
+    "type": "choice",
+    "question": "甲计划12：15出发以45km/h 的速度开车前往A市，并于15：45抵达。但他因故延迟到13：05才出发并于15：35抵达。他实际的行驶速度为(    ）km/h。",
+    "options": ["54", "57", "60", "63"],
+    "answer": 3,
+    "analysis": "考点：数学运算；路程=45×3.5=157.5 km，实际用时13:05到15:35为2.5小时，速度=157.5÷2.5=63 km/h。",
+    "tags": ["数学运算", "行程问题"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 341,
+    "type": "choice",
+    "question": "化学知识可以帮助我们远离灾害。以下做法不合理的是(    ）",
+    "options": ["使用蜡烛时不慎使书本着火，用湿布盖灭", "厨房燃气管漏气，立即关闭阀门开窗通风", "实验时，把没有用完的白磷丢进垃圾筐里", "高楼着火，用湿毛巾捂住口鼻，蹲下靠近地面撤离"],
+    "answer": 2,
+    "analysis": "考点：化学安全常识；白磷易自燃，不能随意丢进垃圾筐，应放回水中保存。",
+    "tags": ["科学常识", "化学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 342,
+    "type": "choice",
+    "question": "下列选项中，不易引起沟通障碍的行为表现是(    ）",
+    "options": ["讲话模糊", "言简意赅", "信息不对称"],
+    "answer": 1,
+    "analysis": "考点：人际沟通；言简意赅能准确传达信息，不易引起沟通障碍。",
+    "tags": ["人文知识", "沟通"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 343,
+    "type": "choice",
+    "question": "张某有甲、乙、丙三子，张某去世后，没有留下遗嘱。其在遗产处理前，甲明确表示放弃继承，乙明确表示要继承，丙没有做出放弃或接受的继承表示，那么丙的行为视为(    )",
+    "options": ["放弃继承", "接受继承", "丧失继承权", "转继承"],
+    "answer": 1,
+    "analysis": "考点：法律常识；《民法典》规定，继承开始后，继承人放弃继承的，应当在遗产处理前，以书面形式作出放弃继承的表示；没有表示的，视为接受继承。",
+    "tags": ["法律常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 344,
+    "type": "choice",
+    "question": "中国地理中“三大平原”，其中面积最大、地势最高的平原是(    )",
+    "options": ["华北平原", "成都平原", "长江中下游平原", "东北平原"],
+    "answer": 3,
+    "analysis": "考点：地理常识；东北平原是我国面积最大的平原，且地势在三大平原中最高。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 345,
+    "type": "choice",
+    "question": "下列关于我国土地资源的说法不正确的是(    ）",
+    "options": ["我国的陆地面积居世界第四位", "截至 2010 年底，中国耕地总数不足 18.26 亿亩，已接近“红线”，人均耕地不足 0.1 公顷，不到世界平均水平的一半", "我国陆地地形多种多样，五种基本类型都有，山区总面积约占陆地总面积的三分之二", "宁夏平原和河套平原被称为“塞上江南”"],
+    "answer": 0,
+    "analysis": "考点：地理常识；我国陆地面积约960万平方千米，居世界第三位（仅次于俄罗斯和加拿大），不是第四位。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 346,
+    "type": "choice",
+    "question": "《在哪遥远的地方》是哪里的民歌？ (    )",
+    "options": ["四川民歌", "江苏民歌", "蒙古民歌", "青海民歌"],
+    "answer": 3,
+    "analysis": "考点：音乐常识；《在那遥远的地方》是青海民歌（王洛宾整理创作）。",
+    "tags": ["人文知识", "音乐"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 347,
+    "type": "choice",
+    "question": "喜马拉雅山系是由(    ）挤压形成的。",
+    "options": ["美洲板块和太平洋板块", "南极洲板块和太平洋板块", "印度洋板块和亚欧板块", "亚欧板块和太平洋板块"],
+    "answer": 2,
+    "analysis": "考点：地理常识；喜马拉雅山脉是由印度洋板块与亚欧板块碰撞挤压形成的。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 348,
+    "type": "choice",
+    "question": "“什么叫作不简单？能够把简单的事情天天做好，就是不简单”，说这话的是海尔集团的董事长(      )",
+    "options": ["李开复", "俞敏洪", "张瑞敏", "柳传志"],
+    "answer": 2,
+    "analysis": "考点：职业道德/企业管理常识；这是海尔集团董事局主席、首席执行官张瑞敏的名言。",
+    "tags": ["人文知识", "管理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 349,
+    "type": "choice",
+    "question": "在下面几种语境中敬辞使用恰当的一项是：语境：①麻烦别人②请人改变③求人原谅④请人批评(        )",
+    "options": ["打扰 斧正 指教 包涵", "劳驾 打扰 赐教 斧正", "打扰 斧正 包涵 指教", "包涵 打扰 赐教 斧正"],
+    "answer": 2,
+    "analysis": "考点：文化常识/语言表达；麻烦别人用“打扰”，请人改变用“斧正”，求人原凉用“包涵”，请人批评用“指教”。",
+    "tags": ["人文知识", "语文"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 350,
+    "type": "choice",
+    "question": "下列各项中，属于先天性行为的是(        )",
+    "options": ["马戏团里的狮子表演节目", "老鼠打洞", "小狗作算术", "蚯蚓走迷宫"],
+    "answer": 1,
+    "analysis": "考点：生物常识；老鼠打洞是生来就有的，由遗传物质决定的先天性行为，其余为学习行为。",
+    "tags": ["科学常识", "生物"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 351,
+    "type": "choice",
+    "question": "下列关于营养物质的叙述中，正确的是(    )",
+    "options": ["营养物质摄入过多时，一定使人发", "营养物质摄入过多时，一定排出", "营养物质摄入过多时，氧化分解加强，释放能量多", "在人体内可以利用必需氨基酸合成非必需氨基酸"],
+    "answer": 3,
+    "analysis": "考点：生物常识；人体内可以利用必需氨基酸合成非必需氨基酸。",
+    "tags": ["科学常识", "生物"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 352,
+    "type": "choice",
+    "question": "下面属于居住建筑的有(        )",
+    "options": ["住宅，宿舍，学校，办公楼", "公寓，旅馆，商场，医院", "火车站，商店，航空站，中小学校", "宿舍，公寓，别墅，住宅"],
+    "answer": 3,
+    "analysis": "考点：通用技术/建筑常识；宿舍、公寓、别墅、住宅均属于居住建筑。",
+    "tags": ["通用技术", "建筑"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 353,
+    "type": "choice",
+    "question": "文人对各种植物有自己的偏爱，陶渊明喜爱菊花，北宋文豪苏东坡则说过：宁可食无肉，不可(            ）",
+    "options": ["居无松", "居无竹", "居无梅", "居无菊"],
+    "answer": 1,
+    "analysis": "考点：文学常识；苏轼名言：“宁可食无肉，不可居无竹”。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 354,
+    "type": "choice",
+    "question": "麦克斯威尔•铂金斯是美国现代文学史上最伟大的编辑之一，他曾发掘出弗•司各特•菲茨杰拉德、欧内斯特•海明威、托马斯•沃尔夫等大作家。请问下列哪部作品不可能是铂金斯最初编辑出版的(            ）",
+    "options": ["《在人间》", "《太阳照常升起》", "《时间与河流》", "《了不起的盖茨比》"],
+    "answer": 0,
+    "analysis": "考点：文学常识；《在人间》是苏联作家高尔基的作品，不是上述美国作家的作品。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 355,
+    "type": "choice",
+    "question": "在自行车家族中有性能各异的不同车型。如装有辅助小轮的童车、双梁载重车、弯梁女式车、双坐双脚蹬的双人车等，这些特殊功能的实现，是因为设计者改变了(    )。",
+    "options": ["车的自重", "车的材料", "车的结构", "车的大小"],
+    "answer": 2,
+    "analysis": "考点：通用技术；不同功能的实现主要是通过改变产品的结构来实现的。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 356,
+    "type": "choice",
+    "question": "人生价值包括自我价值和社会价值两个方面，其中衡量一个人社会价值的标准是(    ）",
+    "options": ["个人拥有财富的多少", "个人对社会奉献的多少", "个人所从事的职业是否重要", "个人的行为动机是否高尚"],
+    "answer": 1,
+    "analysis": "考点：思政/人生价值观；衡量一个人社会价值的标准主要是看他对社会奉献的多少。",
+    "tags": ["思政", "价值观"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 357,
+    "type": "choice",
+    "question": "用照相机给某人拍完半身像后，改拍全身，应(       ）",
+    "options": ["缩短镜头与人的距离，同时增大镜头与底片间的距离", "增大镜头与人的距离，同时减小镜头与底片间的距离", "只需要增大照相机与人间的距离", "只需要减小照相机与人的距离"],
+    "answer": 1,
+    "analysis": "考点：物理常识；拍全身像时，物距增大，像距减小，所以应增大镜头与人的距离，同时减小镜头与底片间的距离。",
+    "tags": ["科学常识", "物理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 358,
+    "type": "choice",
+    "question": "北欧建筑物的屋顶多呈尖状，主要原因是当地(        )",
+    "options": ["日照不足", "夏秋多大风", "降雪量大", "年温差较大"],
+    "answer": 2,
+    "analysis": "考点：地理常识；北欧降雪量大，尖顶房屋不易积雪。",
+    "tags": ["人文知识", "地理"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 359,
+    "type": "choice",
+    "question": "郑和七下“西洋”指的是(    ）",
+    "options": ["太平洋", "大西洋", "印度洋", "北冰洋"],
+    "answer": 2,
+    "analysis": "考点：历史地理常识；郑和下西洋主要航行在印度洋海域。",
+    "tags": ["人文知识", "历史"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 360,
+    "type": "choice",
+    "question": "下列著作与其学科属性对应正确的是(    ）",
+    "options": ["《齐民要术》——地理学", "《神农本草经》——农学", "《武经总要》——军事学", "《天工开物》——天文学"],
+    "answer": 3,
+    "analysis": "考点：国学常识；：《齐民要术》是农学著作，《神农本草经》是医药学著作，《天工开物》是农业和手工业技术著作，《武经总要》是军事学著作。",
+    "tags": ["人文知识", "国学"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 361,
+    "type": "choice",
+    "question": "下列写过《长恨歌》的是 (     )",
+    "options": ["李白", "孟浩然", "王安石", "白居易"],
+    "answer": 3,
+    "analysis": "考点：文学常识；《长恨歌》是唐代诗人白居易创作的长篇叙事诗。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 362,
+    "type": "choice",
+    "question": "关于温度、热量和内能的说法，不正确的是(    ）",
+    "options": ["物体吸收了热量，内能一定会增加", "物体温度升高时，内能一定会增加", "在质量相同的前提下，温度升高得多的物体吸收的热量不一定多", "物体的内能增加时，不一定是从外界吸收了热量"],
+    "answer": 0,
+    "analysis": "考点：物理常识；物体吸收热量，同时对外做功，其内能不一定增加。",
+    "tags": ["科学常识", "物理"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 363,
+    "type": "choice",
+    "question": "小说《红楼梦》的作者是(    )",
+    "options": ["吴承恩", "罗贯中", "曹雪芹", "吴敬梓"],
+    "answer": 2,
+    "analysis": "考点：文学常识；《红楼梦》的作者是清代作家曹雪芹。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 364,
+    "type": "choice",
+    "question": "第一个对《红楼梦》作出美学评价的是谁？(    )",
+    "options": ["王国维", "鲁迅", "胡适", "俞平伯"],
+    "answer": 0,
+    "analysis": "考点：文学常识；王国维在《红楼梦评论》中首次运用西方美学理论对《红楼梦》进行系统评价。",
+    "tags": ["人文知识", "文学"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 365,
+    "type": "choice",
+    "question": "下列有关营养成分与人体健康关系的叙述中错误的是(    )",
+    "options": ["人体缺铁易患贫血病", "蛋白质、油脂能为人体提供能量", "食用蔬菜、水果补充维生素", "青少年预防佝偻病，应适量补锌"],
+    "answer": 3,
+    "analysis": "考点：生物/健康常识；青少年预防佝偻病应该适量补钙和维生素D，而不是补锌。",
+    "tags": ["科学常识", "生物"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 366,
+    "type": "choice",
+    "question": "我们生活的地球，是一个民族的世界。当今世界，约有3000个民族，分布在200多个国家和地区，绝大多数国家由多民族组成。下列不属于我国的民族是(        )",
+    "options": ["柯尔克孜族", "布朗族", "俄罗斯族", "图瓦族"],
+    "answer": 3,
+    "analysis": "考点：民族常识；图瓦族主要分布在俄罗斯，我国的图瓦人一般被归入蒙古族，未单独列为法定民族。柯尔克孜族、布朗族、俄罗斯族均是中华民族大家庭的成员。",
+    "tags": ["人文知识", "民族"],
+    "difficulty": "中等"
+  }
+]
+    },{
+        "paperId": 5,
+        "paperName": "C语言测试（一）",
+        "questions": [{
+    "id": 401,
+    "type": "choice",
+    "question": "C语言程序的基本单位是（ ）。",
+    "options": ["语句", "函数", "程序行", "字符"],
+    "answer": 1,
+    "analysis": "考点：C语言基础概念。C语言程序是由函数组成的，main函数是程序的入口。",
+    "tags": ["C语言基础"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 402,
+    "type": "choice",
+    "question": "以下关于C语言标识符的描述中，正确的是（ ）。",
+    "options": ["可由字母、数字、下划线组成", "可包含特殊符号如@、#", "第一个字符可以是数字", "不区分大小写"],
+    "answer": 0,
+    "analysis": "考点：标识符命名规则。标识符只能由字母、数字、下划线组成，且不能以数字开头，区分大小写。",
+    "tags": ["C语言基础"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 403,
+    "type": "choice",
+    "question": "C语言中，以下合法的自定义标识符是（ ）。",
+    "options": ["2a", "int", "_sum", "a-b"],
+    "answer": 2,
+    "analysis": "考点：标识符命名规则。A以数字开头错误；B是关键字；D包含减号错误。",
+    "tags": ["C语言基础"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 404,
+    "type": "choice",
+    "question": "以下不属于C语言关键字的是（ ）。",
+    "options": ["main", "int", "while", "return"],
+    "answer": 0,
+    "analysis": "考点：C语言关键字。main是主函数名，属于用户自定义标识符，不是关键字。",
+    "tags": ["C语言基础"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 405,
+    "type": "choice",
+    "question": "以下哪种数据类型占用的内存空间最小？（ ）",
+    "options": ["int", "char", "float", "double"],
+    "answer": 1,
+    "analysis": "考点：数据类型。char占1字节，通常最小。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 406,
+    "type": "choice",
+    "question": "若有定义 int a=5;，则变量 a 在内存中通常占用（ ）个字节。",
+    "options": ["1", "2", "4", "8"],
+    "answer": 2,
+    "analysis": "考点：数据类型。在常见的32位和64位系统中，int类型通常占用4个字节。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 407,
+    "type": "choice",
+    "question": "以下合法的整型常量是（ ）。",
+    "options": ["012", "1.5", "\"10\"", "0x1G"],
+    "answer": 0,
+    "analysis": "考点：常量。012是合法的八进制整型常量；B是浮点型；C是字符串；D包含非法十六进制字符G。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 408,
+    "type": "choice",
+    "question": "以下合法的实型常量是（ ）。",
+    "options": ["1.2e3", "e5", "1.2.3", "0x1A"],
+    "answer": 0,
+    "analysis": "考点：常量。1.2e3是合法的指数形式实型常量。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 409,
+    "type": "choice",
+    "question": "若 int a='A';，则变量a的值是（ ）。",
+    "options": ["A", "65", "97", "错误"],
+    "answer": 1,
+    "analysis": "考点：字符与ASCII码。字符'A'的ASCII码值为65，赋值给整型变量a，a的值为65。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 410,
+    "type": "choice",
+    "question": "以下转义字符中，表示换行的是（ ）。",
+    "options": ["\\t", "\\n", "\\\\", "\\0"],
+    "answer": 1,
+    "analysis": "考点：转义字符。\\n表示换行。",
+    "tags": ["数据类型"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 411,
+    "type": "choice",
+    "question": "字符串 \"hello\" 在内存中占用的字节数是（ ）。",
+    "options": ["5", "6", "7", "8"],
+    "answer": 1,
+    "analysis": "考点：字符串。字符串末尾会自动添加一个'\\0'作为结束标志，因此5个字符加1个结束符，共占6个字节。",
+    "tags": ["数组与字符串"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 412,
+    "type": "choice",
+    "question": "C语言中，运算符 % 要求操作数必须是（ ）。",
+    "options": ["整型", "实型", "字符型", "任意类型"],
+    "answer": 0,
+    "analysis": "考点：运算符。取余运算符%只能用于整型数据。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 413,
+    "type": "choice",
+    "question": "表达式 7/2 的结果是（ ）。",
+    "options": ["3.5", "3", "4", "3.0"],
+    "answer": 1,
+    "analysis": "考点：算术运算。两个整数相除，结果为整数，小数部分被舍弃，所以7/2=3。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 414,
+    "type": "choice",
+    "question": "以下关于运算符优先级的说法，正确的是（ ）。",
+    "options": ["算术 > 关系 > 逻辑 > 赋值", "关系 > 算术 > 赋值 > 逻辑", "赋值 > 逻辑 > 关系 > 算术", "逻辑 > 算术 > 关系 > 赋值"],
+    "answer": 0,
+    "analysis": "考点：运算符优先级。常见的优先级顺序为：算术运算符 > 关系运算符 > 逻辑运算符 > 赋值运算符。",
+    "tags": ["运算符"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 415,
+    "type": "choice",
+    "question": "若 int a=5, b=2;，则表达式 a>b? a:b 的值是（ ）。",
+    "options": ["2", "5", "1", "0"],
+    "answer": 1,
+    "analysis": "考点：条件运算符。a>b为真，所以取a的值5。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 416,
+    "type": "choice",
+    "question": "逻辑表达式 0 && 1 的值是（ ）。",
+    "options": ["0", "1", "真", "假"],
+    "answer": 0,
+    "analysis": "考点：逻辑运算。逻辑与&&运算，只要有0，结果就是0。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 417,
+    "type": "choice",
+    "question": "逻辑表达式 0 || 2 的值是（ ）。",
+    "options": ["0", "1", "2", "3"],
+    "answer": 1,
+    "analysis": "考点：逻辑运算。逻辑或||运算，只要有一个非0，结果就为1（真）。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 418,
+    "type": "choice",
+    "question": "下列语句中，能正确输出整型变量a的是（ ）。",
+    "options": ["printf(\"%f\", a);", "printf(\"%c\", a);", "printf(\"%d\", a);", "printf(\"%s\", a);"],
+    "answer": 2,
+    "analysis": "考点：格式化输出。%d用于输出整型数据。",
+    "tags": ["输入输出"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 419,
+    "type": "choice",
+    "question": "使用 scanf 函数输入整型数据时，格式控制符应使用（ ）。",
+    "options": ["%d", "%f", "%c", "%s"],
+    "answer": 0,
+    "analysis": "考点：格式化输入。%d用于读取整型数据。",
+    "tags": ["输入输出"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 420,
+    "type": "choice",
+    "question": "在 scanf(\"%d,%d\", &a, &b) 中，输入数据时的分隔符必须是（ ）。",
+    "options": ["空格", "逗号", "回车", "分号"],
+    "answer": 1,
+    "analysis": "考点：格式化输入。格式字符串中有逗号，输入时也必须输入逗号分隔。",
+    "tags": ["输入输出"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 421,
+    "type": "choice",
+    "question": "以下关于if语句的说法，正确的是（ ）。",
+    "options": ["if语句只能有一个分支", "if语句的条件必须是布尔类型", "if语句的条件为0时表示假", "else必须与对应的if配对且不能省略"],
+    "answer": 2,
+    "analysis": "考点：选择结构。C语言中0表示假，非0表示真。",
+    "tags": ["选择结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 422,
+    "type": "choice",
+    "question": "在 switch 语句中，表达式的类型不能是（ ）。",
+    "options": ["int", "char", "float", "enum"],
+    "answer": 2,
+    "analysis": "考点：switch语句。switch表达式的类型只能是整型（包括字符型、枚举型），不能是浮点型。",
+    "tags": ["选择结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 423,
+    "type": "choice",
+    "question": "switch 语句中，当所有 case 都不匹配时，会执行（ ）后的语句。",
+    "options": ["default", "else", "break", "continue"],
+    "answer": 0,
+    "analysis": "考点：switch语句。default子句在没有匹配的case时执行。",
+    "tags": ["选择结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 424,
+    "type": "choice",
+    "question": "在 switch 语句中，若某个 case 分支后没有 break，则程序会（ ）。",
+    "options": ["报错", "跳出switch", "终止执行", "继续执行下一个case"],
+    "answer": 3,
+    "analysis": "考点：switch语句。没有break会导致case穿透，继续执行后面的语句。",
+    "tags": ["选择结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 425,
+    "type": "choice",
+    "question": "以下关于 while 循环与 do-while 循环的描述中，正确的是（ ）。",
+    "options": ["while 先执行后判断", "do-while 先判断后执行", "do-while 至少执行一次循环体", "两者完全等价"],
+    "answer": 2,
+    "analysis": "考点：循环结构。do-while循环先执行一次循环体，再进行判断，因此至少执行一次。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 426,
+    "type": "choice",
+    "question": "for 循环语句 for(i=0; i<10; i++) 中，i<10 是（ ）。",
+    "options": ["初值表达式", "条件表达式", "循环体", "步长表达式"],
+    "answer": 1,
+    "analysis": "考点：for循环。表达式2是循环条件。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 427,
+    "type": "choice",
+    "question": "以下关于 break 和 continue 的说法，正确的是（ ）。",
+    "options": ["break 只能用于循环中", "continue 只能用于 switch 中", "continue 的作用是结束本次循环，进入下一次循环", "break 只结束本次循环"],
+    "answer": 2,
+    "analysis": "考点：循环控制语句。continue结束本次循环，进入下一次；break跳出整个循环。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 428,
+    "type": "choice",
+    "question": "若要在C语言中定义一个有10个整型元素的一维数组，正确的语句是（ ）。",
+    "options": ["int a[10];", "int a(10);", "int a;", "int a[];"],
+    "answer": 0,
+    "analysis": "考点：一维数组定义。格式为：类型说明符 数组名[常量表达式];",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 429,
+    "type": "choice",
+    "question": "若有定义 int a[5] = {1,2,3};，则 a[3] 的值是（ ）。",
+    "options": ["0", "3", "2", "随机值"],
+    "answer": 0,
+    "analysis": "考点：数组初始化。部分初始化时，未赋值的元素默认为0。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 430,
+    "type": "choice",
+    "question": "数组名 a 代表（ ）。",
+    "options": ["数组的第一个元素的值", "数组的首地址", "数组所有元素的总和", "数组最后一个元素的地址"],
+    "answer": 1,
+    "analysis": "考点：数组名。数组名代表数组首元素的地址。",
+    "tags": ["数组与指针"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 431,
+    "type": "choice",
+    "question": "若定义 int a[5][6];，则该数组共有（ ）个元素。",
+    "options": ["11", "30", "20", "36"],
+    "answer": 1,
+    "analysis": "考点：二维数组。元素个数 = 行数 × 列数 = 5 × 6 = 30。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 432,
+    "type": "choice",
+    "question": "引用二维数组 a 中第2行第3列的元素，正确的写法是（ ）。",
+    "options": ["a[1][2]", "a[2][3]", "a(1,2)", "a(2,3)"],
+    "answer": 0,
+    "analysis": "考点：二维数组引用。C语言下标从0开始，第2行第3列对应下标为a[1][2]。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 433,
+    "type": "choice",
+    "question": "若有定义 char str[]=\"China\";，则 str[5] 的值是（ ）。",
+    "options": ["'a'", "'\\0'", "随机值", "不存在"],
+    "answer": 1,
+    "analysis": "考点：字符串。字符串末尾自动补'\\0'，\"China\"长度为5，str[5]即为'\\0'。",
+    "tags": ["数组与字符串"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 434,
+    "type": "choice",
+    "question": "以下关于二维数组初始化的说法，正确的是（ ）。",
+    "options": ["必须分行赋值", "可以省略行数，但必须指定列数", "可以省略列数，但必须指定行数", "不能使用花括号整体赋值"],
+    "answer": 1,
+    "analysis": "考点：二维数组初始化。二维数组定义时可以省略行数，但列数必须指定。",
+    "tags": ["数组"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 435,
+    "type": "choice",
+    "question": "设 int a[5]={1,2,3,4,5}; 则 *(a+2) 的值为（ ）。",
+    "options": ["1", "2", "3", "4"],
+    "answer": 2,
+    "analysis": "考点：指针与数组。a是首地址，a+2指向a[2]，*(a+2)的值即为a[2]的值，也就是3。",
+    "tags": ["数组与指针"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 436,
+    "type": "choice",
+    "question": "以下不正确的数组定义是（ ）。",
+    "options": ["int a[10];", "int n=10; int a[n];（C99前）", "int a[]={1,2,3};", "int a[3][3];"],
+    "answer": 1,
+    "analysis": "考点：数组定义。C99标准之前，数组长度必须是常量表达式，不能是变量n。",
+    "tags": ["数组"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 437,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=5, b=3; printf(\"%d\", a++ + ++b); return 0; }",
+    "options": ["8", "9", "10", "11"],
+    "answer": 1,
+    "analysis": "考点：自增运算。a++先取值5再自增，++b先自增为4再取值，5+4=9。",
+    "tags": ["运算符"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 438,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=10; a+=a-=a*a; printf(\"%d\", a); return 0; }",
+    "options": ["0", "-180", "-80", "10"],
+    "answer": 1,
+    "analysis": "考点：复合赋值。a-=a*a即10-100=-90（此时a变为-90），a+=(-90)即-90+(-90)=-180。",
+    "tags": ["运算符"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 439,
+    "type": "choice",
+    "question": "若有定义 int a=3, b=4, c=5; 则表达式 a+b>c && b==c 的值是（ ）。",
+    "options": ["1", "0", "真", "假"],
+    "answer": 1,
+    "analysis": "考点：逻辑表达式。a+b>c为真（7>5），b==c为假（4!=5），真&&假结果为0。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 440,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int x=1; if(x=2) printf(\"A\"); else printf(\"B\"); return 0; }",
+    "options": ["A", "B", "编译错误", "不确定"],
+    "answer": 0,
+    "analysis": "考点：if语句。x=2是赋值表达式，结果为2（真），所以执行printf(\"A\")。",
+    "tags": ["选择结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 441,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int x=3; switch(x){ default: printf(\"D\"); case 1: printf(\"A\"); break; case 2: printf(\"B\"); } return 0; }",
+    "options": ["D", "A", "DA", "DB"],
+    "answer": 2,
+    "analysis": "考点：switch语句。x=3没有匹配的case，执行default输出D，由于没有break发生穿透，继续执行case 1输出A，遇到break结束。",
+    "tags": ["选择结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 442,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i, sum=0; for(i=1; i<=5; i++) { if(i%2==0) continue; sum+=i; } printf(\"%d\", sum); return 0; }",
+    "options": ["6", "9", "15", "5"],
+    "answer": 1,
+    "analysis": "考点：循环与continue。累加奇数1、3、5，和为9。",
+    "tags": ["循环结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 443,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i=0; while(i<5) { i++; if(i==3) break; } printf(\"%d\", i); return 0; }",
+    "options": ["2", "3", "4", "5"],
+    "answer": 1,
+    "analysis": "考点：循环与break。i递增到3时break跳出循环，此时i的值为3。",
+    "tags": ["循环结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 444,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i, j; for(i=1; i<=3; i++) { for(j=1; j<=i; j++) printf(\"*\"); } return 0; }",
+    "options": ["3个星号", "6个星号", "换行输出", "无输出"],
+    "answer": 1,
+    "analysis": "考点：嵌套循环。一共输出1+2+3=6个星号。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 445,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a[]={2,4,6,8,10}, sum=0, i; for(i=1; i<4; i++) sum+=a[i]; printf(\"%d\", sum); return 0; }",
+    "options": ["18", "12", "20", "8"],
+    "answer": 0,
+    "analysis": "考点：数组遍历。累加a[1]+a[2]+a[3] = 4+6+8 = 18。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 446,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a[5]={1,2,3}, i; for(i=0; i<5; i++) printf(\"%d\", a[i]); return 0; }",
+    "options": ["12345", "12300", "123随机随机", "123"],
+    "answer": 1,
+    "analysis": "考点：数组初始化。部分初始化，后两个元素自动补0，输出12300。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 447,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a[3][3]={{1,2},{3,4},{5,6}}, i, sum=0; for(i=0; i<3; i++) sum+=a[i][1]; printf(\"%d\", sum); return 0; }",
+    "options": ["12", "6", "15", "21"],
+    "answer": 0,
+    "analysis": "考点：二维数组。a[i][1]分别是2、4、6，和为12。",
+    "tags": ["数组"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 448,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=5; printf(\"%d\", a>3? a*2: a+2); return 0; }",
+    "options": ["7", "10", "5", "错误"],
+    "answer": 1,
+    "analysis": "考点：条件运算符。a>3为真，返回a*2=10。",
+    "tags": ["运算符"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 449,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i=5; do { printf(\"%d\", i); i--; } while(i>5); return 0; }",
+    "options": ["54321", "5", "4", "无输出"],
+    "answer": 1,
+    "analysis": "考点：do-while。先执行一次输出5，然后判断i>5为假，循环结束。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 450,
+    "type": "choice",
+    "question": "下列程序执行后，x的值是（ ）。int x=10; x = x++ + 5;",
+    "options": ["15", "16", "10", "11"],
+    "answer": 1,
+    "analysis": "考点：自增运算。x++先取10参与运算，10+5=15赋给x，然后x再自增变为16。",
+    "tags": ["运算符"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 451,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int arr[5]={1,2,3,4,5}, *p=arr; printf(\"%d\", *(p+2)); return 0; }",
+    "options": ["1", "2", "3", "4"],
+    "answer": 2,
+    "analysis": "考点：指针与数组。p指向首地址，p+2指向arr[2]，取值为3。",
+    "tags": ["数组与指针"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 452,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=3, b=2, c=1; if(a>b>c) printf(\"T\"); else printf(\"F\"); return 0; }",
+    "options": ["T", "F", "编译错误", "无输出"],
+    "answer": 1,
+    "analysis": "考点：关系运算结合性。a>b为真(1)，1>c(1>1)为假，所以输出F。",
+    "tags": ["选择结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 453,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i=0, sum=0; while(i<=10) { i++; if(i%2!=0) continue; sum+=i; } printf(\"%d\", sum); return 0; }",
+    "options": ["30", "25", "20", "55"],
+    "answer": 0,
+    "analysis": "考点：循环与continue。累加1到10中的偶数(2+4+6+8+10)，结果为30。",
+    "tags": ["循环结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 454,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i=1; while(i<5) { printf(\"%d\", i++); } return 0; }",
+    "options": ["12345", "1234", "123", "死循环"],
+    "answer": 1,
+    "analysis": "考点：while循环。i从1输出到4，当i为5时循环条件不满足，结束。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 455,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=2, b=3; printf(\"%d\", a>b && a++); printf(\"%d\", a); return 0; }",
+    "options": ["02", "13", "12", "03"],
+    "answer": 0,
+    "analysis": "考点：逻辑短路。a>b为假，&&短路，a++不执行，a仍为2，输出0和2。",
+    "tags": ["运算符"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 456,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a[3][4]={0}, i, j; for(i=0; i<3; i++) a[i][i]=i+1; printf(\"%d\", a[2][2]); return 0; }",
+    "options": ["0", "2", "3", "4"],
+    "answer": 2,
+    "analysis": "考点：二维数组。对主对角线元素赋值，a[2][2]被赋值为2+1=3。",
+    "tags": ["数组"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 457,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i; for(i=0; i<3; i++) printf(\"%d\", i++); return 0; }",
+    "options": ["012", "02", "01", "0123"],
+    "answer": 1,
+    "analysis": "考点：for循环。循环体输出i++，i在循环体自增一次，在循环表达式自增一次，所以输出0和2。",
+    "tags": ["循环结构"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 458,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a=3; do { a++; } while(a<3); printf(\"%d\", a); return 0; }",
+    "options": ["3", "4", "5", "死循环"],
+    "answer": 1,
+    "analysis": "考点：do-while。先执行a++，a变为4，判断a<3为假，循环结束，输出4。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 459,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int i, sum=0; for(i=0; i<5; i+=2) sum+=i; printf(\"%d\", sum); return 0; }",
+    "options": ["6", "4", "9", "10"],
+    "answer": 0,
+    "analysis": "考点：for循环。i的取值为0, 2, 4，sum = 0+2+4 = 6。",
+    "tags": ["循环结构"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 460,
+    "type": "choice",
+    "question": "下列程序的运行结果是（ ）。int main() { int a[5]={1,2,3,4,5}; printf(\"%d\", a[5]); return 0; }",
+    "options": ["5", "0", "随机值/越界", "编译错误"],
+    "answer": 2,
+    "analysis": "考点：数组越界。数组大小为5，合法下标为0~4，a[5]访问越界，结果不确定。",
+    "tags": ["数组"],
+    "difficulty": "容易"
+  }]
+   },{
+       "paperId": 6,
+       "paperName": "职业技能测试（三）",
+       "questions":[
+  {
+    "id": 500,
+    "type": "choice",
+    "question": "中国从古到今都提倡工作要以诚信为本，这体现了职业道德的( )。",
+    "options": ["时代性", "民族性", "共同性", "历史继承性"],
+    "answer": 3,
+    "analysis": "考点：职业道德特征。职业道德具有历史继承性，优良的职业道德传统会被代代相传。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 501,
+    "type": "choice",
+    "question": "一男子穿迷彩裤进入书店时，被当成农民工拒绝入内。该书店的做法( )。",
+    "options": ["有利于维护良好的读书环境，理应支持", "没有尊重他人、平等待人，应受谴责", "限制他人行动自由，应受法律制裁", "旨在提醒市民注意衣着，无可厚非"],
+    "answer": 1,
+    "analysis": "考点：道德素养。书店以貌取人、区别对待，违背了平等待人、尊重他人的基本道德要求。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 502,
+    "type": "choice",
+    "question": "人体必需的六大营养素中有三大热能营养素，在体内氧化可能产生能量。下列不属于热能营养素的是( )。",
+    "options": ["碳水化合物", "维生素", "脂肪", "蛋白质"],
+    "answer": 1,
+    "analysis": "考点：生物常识。三大热能营养素是碳水化合物、脂肪和蛋白质。维生素不产生能量。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 503,
+    "type": "choice",
+    "question": "小李、小张、小马、小王在一起讨论N地区的廉租房建设情况，小李说：“N地区的廉租房建设得都不错。”小张说：“N地区没有廉租房建设得好。”小马说：“N地区有的廉租房建设得不好。”小王说：“N地区还是有廉租房建设得不错的。”假如小张和小马都说错了，那么，可以推出( )。",
+    "options": ["小李说错了", "小李和小王都说错了", "小王说错了", "小王说对了"],
+    "answer": 3,
+    "analysis": "考点：逻辑推理。小马说“有的不好”是假话，说明所有都好，即小李说对了，小王说“有好的”也必定为真。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 504,
+    "type": "choice",
+    "question": "当物质达到纳米尺度以后，大约是在 0.1～100 纳米这个范围空间，物质的性能就会发生突变，出现一些特殊性能。这种由既不同于微观原子、分子，也不同于宏观物质的特殊性能构成的材料，即为纳米材料。下列关于纳米材料，说法不正确的是( )。",
+    "options": ["在卫星上用纳米集成器件，卫星将更小，更容易发射", "在布料上涂上纳米材质，能够使布具有防污抗菌作用", "在汽车表面进行纳米镀膜就可以防止不同程度的刮伤", "纳米材料制成的雨伞不沾水，轻轻一甩，就可以让伞面保持干燥"],
+    "answer": 2,
+    "analysis": "考点：科技常识。纳米镀膜可以提高表面硬度或疏水性，但不能完全防止“不同程度”的刮伤，表述过于绝对。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 505,
+    "type": "choice",
+    "question": "关于月球的描述，正确的是( )。",
+    "options": ["在月球上，两个人互相讲话可以听见", "在月球上，种下的植物能成活", "在地球上重 300 牛顿的物体，在月球上只有 50 牛顿"],
+    "answer": 2,
+    "analysis": "考点：地理常识。月球上没有空气，不能传声，植物难以自然成活；月球引力约为地球的1/6，所以300N的物体在月球上约为50N。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 506,
+    "type": "choice",
+    "question": "( )的团队的表现是：成员对团队里表现突出的同事心怀怨恨；甘于平庸；缺乏明确的时间观念；把责任推到团队领导一个人身上。",
+    "options": ["缺乏信任", "惧怕冲突", "逃避责任", "漠视结果"],
+    "answer": 2,
+    "analysis": "考点：团队协作。推卸责任、甘于平庸、怨恨表现突出的同事，是典型的逃避责任表现。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 507,
+    "type": "choice",
+    "question": "能通过吸盘吸附在人和动物身上，吸食血液的环节动物是( )。",
+    "options": ["珊瑚虫", "蚯蚓", "血吸虫", "蛭"],
+    "answer": 3,
+    "analysis": "考点：生物常识。蛭（水蛭/蚂蟥）属于环节动物，有吸盘，能吸食血液。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 509,
+    "type": "choice",
+    "question": "中国的中央银行是( )。",
+    "options": ["中国工商银行", "中国农业银行", "中国建设银行", "中国人民银行"],
+    "answer": 3,
+    "analysis": "考点：经济常识。中国人民银行是我国的中央银行。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 510,
+    "type": "choice",
+    "question": "下面关于 Wi-Fi 的说法，正确的是( )。",
+    "options": ["Wi-Fi是一种可以将笔记本电脑、手机、IPAD 等终端以无线方式连接的技术", "严格意义上来讲，Wi-Fi 就是我们常说的 WLAN", "Wi-Fi 就是中国移动提供的无线网络服务", "所有的智能手机都具有 Wi-Fi 功能"],
+    "answer": 0,
+    "analysis": "考点：信息技术。Wi-Fi是一种无线局域网技术；WLAN范围比Wi-Fi广；Wi-Fi并非移动专属；并非所有智能手机都有Wi-Fi。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 511,
+    "type": "choice",
+    "question": "“诗中有画，画中有诗”一句是谁对谁的评论？( )",
+    "options": ["钟嵘对陶渊明", "苏轼对王维", "欧阳修对李白", "王国维对苏轼"],
+    "answer": 1,
+    "analysis": "考点：文学常识。苏轼曾评价王维：“味摩诘之诗，诗中有画；观摩诘之画，画中有诗。”",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 512,
+    "type": "choice",
+    "question": "下列各产品中能适用我国《产品质量法》的是( )。",
+    "options": ["甲自产自用的木椅", "乙销售的木椅", "丙自建自用的木屋", "丁销售的木屋"],
+    "answer": 1,
+    "analysis": "考点：法律常识。《产品质量法》适用于经过加工、制作，用于销售的产品。自产自用和建设工程（木屋）不适用。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 513,
+    "type": "choice",
+    "question": "茅盾最先创造了“中国式三部曲”的写作方式，最先是“《蚀》三部曲”，后来有“农村三部曲”，中间又写作了长篇巨作《子夜》、中篇小说《林家铺子》等。以下作品属于“《蚀》三部曲”的是( )。",
+    "options": ["《幻灭》《动摇》《追求》", "《春》《秋》《火》", "《灭亡》《新生》《家》", "《雷》《雨》《电》"],
+    "answer": 0,
+    "analysis": "考点：文学常识。茅盾的《蚀》三部曲包括《幻灭》《动摇》《追求》。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 514,
+    "type": "choice",
+    "question": "大雨过后，蚯蚓常常爬到地面活动，其原因是( )。",
+    "options": ["洞中缺少食物", "洞中缺少阳光", "洞中缺少氧气", "洞中温度过低"],
+    "answer": 2,
+    "analysis": "考点：生物常识。大雨导致土壤积水，缝隙被水填满，蚯蚓因缺氧而爬出地面呼吸。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 515,
+    "type": "choice",
+    "question": "关于生活中的物理知识，下列说法正确的是：( )。",
+    "options": ["微波炉的加热原理是利用电能直接转化为内能", "煮饭、烧水时主要是运用热传导方式进行传热的", "使用炉灶炒菜时，要使锅底放在火苗的外焰，外焰温度高", "高压锅煮食物熟得快是因为锅内气压增大，降低了水的沸点"],
+    "answer": 2,
+    "analysis": "考点：物理常识。外焰接触空气最充分，燃烧最完全，温度最高；高压锅是提高沸点；煮饭烧水主要是热对流。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 516,
+    "type": "choice",
+    "question": "下列主要为人体糖类的食物是( )。",
+    "options": ["纯牛奶", "花生油", "开花馍", "胡萝卜"],
+    "answer": 2,
+    "analysis": "考点：生物常识。开花馍（面食）富含淀粉，属于糖类。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 517,
+    "type": "choice",
+    "question": "夜空中有许多流星从天空中一个所谓的辐射点发射出来的天象景观叫( )。",
+    "options": ["流星雨", "恒星雨", "卫星雨", "行星雨"],
+    "answer": 0,
+    "analysis": "考点：地理常识。这就是流星雨的定义。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 518,
+    "type": "choice",
+    "question": "下列有关网络和网络安全说法正确的是( )。",
+    "options": ["在公共计算机上登录某网站时保存用户名和密码可以方便查询", "支付宝推出的刷脸功能可提高信息的安全性", "用搜索引擎搜索信息时，为了缩小搜索范围，尽量减少关键词", "在因特网资源评价中，个人推荐的方式具有较高的参考价值"],
+    "answer": 1,
+    "analysis": "考点：网络安全。生物识别技术（刷脸）提高了支付安全；公共电脑保存密码不安全；减少关键词会扩大搜索范围。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 519,
+    "type": "choice",
+    "question": "本校按照确立的“素质为本，多元发展”的办学     ，将培养学生能力作为教学重点。填入画横线处最恰当的一项是( )。",
+    "options": ["概念", "方向", "特点", "理念"],
+    "answer": 3,
+    "analysis": "考点：言语理解。办学理念是固定搭配，指办学的指导思想。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 520,
+    "type": "choice",
+    "question": "我国社会主义道德建设的核心是( )。",
+    "options": ["诚实守信", "办事公道", "为人民服务", "艰苦奋斗"],
+    "answer": 2,
+    "analysis": "考点：思想政治。为人民服务是社会主义道德建设的核心。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 521,
+    "type": "choice",
+    "question": "在我们的学习生活中，我们会因为一个目标的达成而欢呼雀跃，我们也会因一次失败而变得沮丧。但是学习使我们获取知识、掌握技能、增长智慧，那种愉悦是难以言表的。这告诉我们( )。",
+    "options": ["要科学合理安排学习时间", "学习是苦乐交织的过程", "需要掌握科学的学习方法", "学习是一个持续不断的努力过程"],
+    "answer": 1,
+    "analysis": "考点：心理健康。题干描述了学习带来的成功喜悦与失败沮丧，体现了苦乐交织。",
+    "tags": ["心理健康"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 522,
+    "type": "choice",
+    "question": "通常情况下，一天当中最低气温出现在( )。",
+    "options": ["午夜 12 点", "日出前后", "晚上 8 点", "午后 2 点"],
+    "answer": 1,
+    "analysis": "考点：地理常识。一天中最低气温通常出现在日出前后。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 523,
+    "type": "choice",
+    "question": "在水转化为水蒸气的过程中，发生改变的是( )。",
+    "options": ["分子间距", "分子大小", "分子数量", "原子大小"],
+    "answer": 0,
+    "analysis": "考点：物理常识。汽化过程中，水分子本身不变，只是分子间的距离变大。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 524,
+    "type": "choice",
+    "question": "17、18 世纪，当欧洲上空的“理性之光”将人们引向光明时，东方的中国人正逐渐被禁锢于“思想的牢笼”。“思想的牢笼”指的是( )。",
+    "options": ["焚书坑儒", "罢黜百家，独尊儒术", "设立三司", "八股取士、文字狱"],
+    "answer": 3,
+    "analysis": "考点：历史常识。明清时期的八股取士和文字狱严重禁锢了知识分子的思想。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 525,
+    "type": "choice",
+    "question": "破甲弹战斗部主要由金属药型罩、壳体、炸药装药和起爆序列组成，装药爆炸后，爆炸产生足够的压力加速大锥角药型罩，使其从顶部发生翻转，形成高速弹丸或金属射流，以高速动能侵彻目标。目前药型罩的材质主要以( )为主。",
+    "options": ["铁", "铝", "铜", "黄金"],
+    "answer": 2,
+    "analysis": "考点：军事常识。紫铜因其密度和延展性，是破甲弹药型罩最常用的材料。",
+    "tags": ["科学常识"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 526,
+    "type": "choice",
+    "question": "“行政机关不得法外设定权力，没有法律法规依据不得作出减损公民、法人和其他组织合法权益或者增加其义务的决定”，这体现了法治政府建设中哪项要求？( )",
+    "options": ["职能科学", "守法诚信", "执法严明", "权责法定"],
+    "answer": 3,
+    "analysis": "考点：法律常识。强调权力来源于法律，必须在法律范围内行使，体现权责法定。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 527,
+    "type": "choice",
+    "question": "以下各项列举了我国常见气象灾害与其发生地区的对应关系，其中正确的一项是：( )。",
+    "options": ["洪涝—西北地区", "洪涝—东北地区", "春旱—华南地区", "伏旱—华北地区"],
+    "answer": 1,
+    "analysis": "考点：地理常识。东北地区夏季多暴雨容易发生洪涝；西北少洪涝；华南多台风雨；华北多春旱。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 528,
+    "type": "choice",
+    "question": "村民刘某欲将6亩承包地以每亩每年900元的价格流转，外地种田大户马某，本村村民孙某都有意流转刘某的承包地。下列关于该承包地流转的说法，正确的是：( )。",
+    "options": ["该承包地的流转收益全部归刘某所有", "该承包地的流转期限可超过承包期限的剩余期限", "马某是种田大户有技术优势，对承包地的流转有优先权", "刘某流转承包地后，与村农民集体的承包关系自动解除"],
+    "answer": 0,
+    "analysis": "考点：法律常识。土地流转收益归承包方所有；流转期限不能超过剩余期限；本村村民有优先权；流转后承包关系不解除。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 529,
+    "type": "choice",
+    "question": "《双城记》是近代著名作家( )的作品。",
+    "options": ["约瑟夫•海勒", "狄更斯", "马克•吐温", "惠特曼"],
+    "answer": 1,
+    "analysis": "考点：文学常识。《双城记》是英国作家查尔斯·狄更斯的作品。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 531,
+    "type": "choice",
+    "question": "“鄂尔多斯”在蒙古语中是什么意思？( )",
+    "options": ["大草原", "盛产羊毛的地方", "众多宫殿", "美丽的地方"],
+    "answer": 2,
+    "analysis": "考点：文化常识。鄂尔多斯在蒙古语中意为“众多的宫殿”。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 532,
+    "type": "choice",
+    "question": "某人被判处无期徒刑，减刑以后实际执行的刑期不能少于( )。",
+    "options": ["五年", "十年", "七年", "十五年"],
+    "answer": 1,
+    "analysis": "考点：法律常识。根据刑法规定，无期徒刑减刑后实际执行的刑期不能少于十三年（注：原题选项可能较老或简略，通常考最低限度）。此处按旧法或常见题库选B（10年或13年视具体法条版本，以B为常见答案）。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 533,
+    "type": "choice",
+    "question": "眼镜∶镜片( )",
+    "options": ["饮水机∶桶装水", "汽车∶轮胎", "墙体∶开关", "公园∶园丁"],
+    "answer": 1,
+    "analysis": "考点：类比推理。镜片是眼镜的组成部分，轮胎是汽车的组成部分。",
+    "tags": ["逻辑思维"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 534,
+    "type": "choice",
+    "question": "地球具有生命的外部条件是( )。",
+    "options": ["在太阳系中位置适中，具有适宜的温度", "地球的质量体积适中，具有适合生物呼吸的大气层", "处于比较稳定和安全的宇宙环境之中", "具有丰富的液态水，为生命的形成和进化创造条件"],
+    "answer": 2,
+    "analysis": "考点：地理常识。A、B、D都是地球自身的内部条件，只有C（稳定的宇宙环境）属于外部条件。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 535,
+    "type": "choice",
+    "question": "下列叙述正确的是( )。",
+    "options": ["自然界的物质都是以化合物的形式存在的", "凡是含氧元素的化合物都是氧化物", "冰块和水混合得到混合物", "同种元素组成的纯净物是单质"],
+    "answer": 3,
+    "analysis": "考点：化学常识。自然界有单质；含氧的不一定是氧化物（如酸、碱、盐）；冰水混合物是纯净物；单质定义正确。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 536,
+    "type": "choice",
+    "question": "从化学角度分析，生活中的下列做法不正确的是( )。",
+    "options": ["长期保存食用油应隔绝空气", "使用加碘食盐时应避免高温", "将肥皂切碎用开水冲化，然后搓洗油污，可以把油污洗掉", "煮饭不宜使用开水，因为开水会破坏粮食中所含的维生素"],
+    "answer": 3,
+    "analysis": "考点：化学常识。用开水煮饭反而能缩短时间，减少维生素因长时间加热受到的破坏，D说法错误。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 537,
+    "type": "choice",
+    "question": "历史上有很多著名的称呼，下列称呼与其人物对应错误的是：( )。",
+    "options": ["“三苏”——苏洵、苏轼、苏辙", "“三曹”——曹操、曹丕、曹植", "“词中之龙”——辛弃疾", "“济南二安”——王维、李清照"],
+    "answer": 3,
+    "analysis": "考点：文学常识。“济南二安”指的是李清照（号易安居士）和辛弃疾（字幼安），并非王维。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 538,
+    "type": "choice",
+    "question": "在排队时，如果后一位同学只能看到前一位同学的后脑勺，就表示队伍排直了。这是因为( )。",
+    "options": ["光速极快", "光的反射", "光沿直线传播"],
+    "answer": 2,
+    "analysis": "考点：物理常识。排直利用的是光在同种均匀介质中沿直线传播的原理。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 539,
+    "type": "choice",
+    "question": "下列关于二维码的描述错误的是( )。",
+    "options": ["条码符号形状、尺寸大小比例可变", "成本低，易制作，持久耐用", "高密度编码，信息容量大", "只能在一个方向(一般是水平方向)上表达信息"],
+    "answer": 3,
+    "analysis": "考点：信息技术。D项描述的是一维条形码的特点。二维码是在二维方向上表达信息的。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 540,
+    "type": "choice",
+    "question": "下列说法不正确的是( )。",
+    "options": ["1949年，中国第一批国产青霉素诞生", "乔纳斯•爱德华•索尔克研制了小儿麻痹症疫苗", "中医针灸被列入人类非物质文化遗产代表作名录", "《唐本草》是世界上最早的由国家颁布的药典"],
+    "answer": 0,
+    "analysis": "考点：科学史。中国第一批国产青霉素诞生于1953年，并非1949年。",
+    "tags": ["科学常识"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 541,
+    "type": "choice",
+    "question": "全面推进依法治国，总目标是建设中国特色社会主义法治体系，建设社会主义法治国家。实现这个总目标，首先必须坚持：( )。",
+    "options": ["中国共产党的领导", "从中国实际出发", "法律面前人人平等", "人民主体地位"],
+    "answer": 0,
+    "analysis": "考点：法律常识。党的领导是中国特色社会主义最本质的特征，是社会主义法治最根本的保证。",
+    "tags": ["法律法规"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 542,
+    "type": "choice",
+    "question": "个体微小的单细胞生物与人类生活有着密切的关系，下列各项能够净化污水的是( )。",
+    "options": ["草履虫", "酵母菌", "衣藻", "烟草花叶病毒"],
+    "answer": 0,
+    "analysis": "考点：生物常识。草履虫能吞食细菌，对污水净化有一定作用。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 543,
+    "type": "choice",
+    "question": "举棋不定是缺乏意志的( )。",
+    "options": ["自觉性", "果断性", "坚韧性", "自制性"],
+    "answer": 1,
+    "analysis": "考点：心理健康。举棋不定表现为犹豫不决，缺乏果断性。",
+    "tags": ["心理健康"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 544,
+    "type": "choice",
+    "question": "彩虹光环最外侧的颜色是( )。",
+    "options": ["红色", "紫色", "蓝色"],
+    "answer": 0,
+    "analysis": "考点：物理常识。彩虹的色彩排列顺序（从外到内）是红、橙、黄、绿、蓝、靛、紫。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 545,
+    "type": "choice",
+    "question": "炎热的夏天，打开电扇会使人感到凉快，其主要原因是( )。",
+    "options": ["电扇有制冷作用", "空气流通后室内温度降低", "汗水蒸发能降低皮肤的温度", "汗水在空气流通中迅速蒸发，带走皮肤的热量"],
+    "answer": 3,
+    "analysis": "考点：物理常识。电扇不能降低室温，只是加快了空气流动，促使汗液蒸发吸热，从而感觉凉快。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 546,
+    "type": "choice",
+    "question": "因自身原因导致误机，武汉某在读女博士张丹(化名)不仅不反思，还掌掴机场工作人员。最终，她被公安局依法处以10日行政拘留。这启示我们( )。",
+    "options": ["①②③", "①③④", "②③④", "①②④"],
+    "answer": 2,
+    "analysis": "考点：道德素养。题干中①“必然受到法律制裁”表述过于绝对，并非所有不文明行为都违法。②③④正确。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 547,
+    "type": "choice",
+    "question": "下列实验现象描述正确的是( )。",
+    "options": ["红磷在氧气中燃烧产生大量的白色烟雾", "硫在氧气中燃烧发出微弱的淡蓝色火焰", "在空气中点燃镁条，发出耀眼的白光，生成一种白色固体", "铁丝在氧气中剧烈燃烧，火星四射，放出大量的热，生成四氧化三铁"],
+    "answer": 2,
+    "analysis": "考点：化学常识。红磷产生白烟不是雾；硫在氧气中发蓝紫色火焰；铁丝实验现象不能直接说出产物名称，应为生成黑色固体。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 548,
+    "type": "choice",
+    "question": "“天下虽安，忘战必危”是我国古代著名的军事思想，充满着朴素的辩证法智慧。下列体现的哲学思想与这句话相同的是( )。",
+    "options": ["不谋全局者不足以谋一域", "有心栽花花不开，无心插柳柳成荫", "贾人旱则资舟，水则资车，以待乏也", "富贵而姿势弄权，乃自取灭亡之道"],
+    "answer": 2,
+    "analysis": "考点：哲学。题干体现了矛盾双方在一定条件下相互转化（安与危）。C项“旱则资舟”也体现了矛盾转化的思想（旱季准备船只防涝）。",
+    "tags": ["思想政治"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 550,
+    "type": "choice",
+    "question": "下列选项不具有合作意识的是( )。",
+    "options": ["“各人自扫门前雪，莫管他人瓦上霜”", "“人心齐，泰山移”", "“一个篱笆三个桩，一个好汉三个帮”", "“众人拾柴火焰高”"],
+    "answer": 0,
+    "analysis": "考点：道德素养。A项体现的是自私自利、不合作。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 551,
+    "type": "choice",
+    "question": "小明非常喜欢动漫，在他的电脑中每次启动IE就会自动打开新浪动漫的主页。小明的做法是将新浪动漫的网址( )。",
+    "options": ["添加到IE收藏夹", "放入IE临时文件夹", "设为IE 主页", "添加到IE历史记录"],
+    "answer": 2,
+    "analysis": "考点：信息技术。浏览器启动自动打开的网页被称为“主页”。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 552,
+    "type": "choice",
+    "question": "我国社会主义基本制度确立的标志是( )。",
+    "options": ["社会主义改造基本完成", "党的十一届三中全会的召开", "党的八大的召开", "中华人民共和国成立"],
+    "answer": 0,
+    "analysis": "考点：思想政治。1956年三大改造基本完成，标志着我国社会主义基本制度的确立。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 553,
+    "type": "choice",
+    "question": "在中国海军护航编队“巢湖”舰、“千岛湖”舰护送下，“河北锦绣”“银河”等 13 艘货轮历时 36 小时顺利抵达亚丁湾西部预定海域。此次护航总航程 4600 海里(1 海里=1852 米)。假设所有船只运动速度都相同，则下列说法正确的是( )。",
+    "options": ["研究舰队的行驶路程时不可将“千岛湖”舰看作质点", "以“千岛湖”舰为参考系，“巢湖”舰一定是静止的", "根据本题给出的条件可以求出此次航行过程中的位移", "根据本题给出的条件可以求出此次航行过程中的平均速度"],
+    "answer": 1,
+    "analysis": "考点：物理常识。所有船速度相同且一起航行，相对静止；路程不是直线，无法求位移和平均速度。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 554,
+    "type": "choice",
+    "question": "要测量 1 分硬币的厚度，使测量结果的误差较小，下列方法中最佳的选项是( )。",
+    "options": ["用刻度尺仔细地测量硬币的厚度", "用刻度尺多次测量硬币的厚度，求平均值", "用刻度尺分别测出 10个1分硬币的厚度，求平均值", "用刻度尺测出10个1分硬币叠加起来的总厚度，再除以10，求得一个1分硬币的厚度"],
+    "answer": 3,
+    "analysis": "考点：物理常识。采用累积法（测多算少）可以有效减小测量微小长度时的误差。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 555,
+    "type": "choice",
+    "question": "下列物理学常识说法正确的是：( )。",
+    "options": ["声音是沿直线传播的", "如果没有振动就不会有发声", "声音在空气中的传播速度比在水中快", "“听其声而知其人”是通过发声的音调不同而实现的"],
+    "answer": 1,
+    "analysis": "考点：物理常识。声音由振动产生；声音在固体、液体中传播比空气中快；“听声辨人”是靠音色。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 556,
+    "type": "choice",
+    "question": "如果将 20℃时的氯化钠不饱和溶液转变为饱和溶液，可以采取的方法是( )。",
+    "options": ["升高温度", "加入水", "加入氯化钠固体", "倒掉一半溶液"],
+    "answer": 2,
+    "analysis": "考点：化学常识。加入溶质或蒸发溶剂可将不饱和溶液变为饱和溶液。氯化钠溶解度随温度变化不大。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 557,
+    "type": "choice",
+    "question": "世界上最早种植棉花的国家是：( )。",
+    "options": ["中国", "美国", "印度", "埃及"],
+    "answer": 2,
+    "analysis": "考点：历史常识。印度是世界上最早种植棉花的国家。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 558,
+    "type": "choice",
+    "question": "下列哪一种动物是“唯一能参加奥运会的动物”？( )。",
+    "options": ["河马", "狗", "猩猩", "马"],
+    "answer": 3,
+    "analysis": "考点：体育常识。奥运会有马术比赛项目。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 559,
+    "type": "choice",
+    "question": "下面哪个成语与秦始皇有关( )。",
+    "options": ["指鹿为马", "奇货可居", "图穷匕见"],
+    "answer": 2,
+    "analysis": "考点：历史常识。图穷匕见讲的是荆轲刺秦王的故事，与秦始皇有关。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 560,
+    "type": "choice",
+    "question": "生物种类的多样性实质是( )的多样性。",
+    "options": ["物种", "基因", "生物群落", "生态系统"],
+    "answer": 1,
+    "analysis": "考点：生物常识。生物种类的多样性实质上是基因的多样性。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 561,
+    "type": "choice",
+    "question": "石墨：金刚石( )",
+    "options": ["白银：黄金", "氧：臭氧", "荔枝：桂圆", "文章：字体"],
+    "answer": 1,
+    "analysis": "考点：类比推理。石墨和金刚石互为同素异形体，氧和臭氧也是。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 562,
+    "type": "choice",
+    "question": "有人说，探寻家园之美，应自乡愁深处( )；建设美丽中国，当从乡村田野( )。",
+    "options": ["体验,开端", "体味,开端", "体验,起步", "体味,起步"],
+    "answer": 3,
+    "analysis": "考点：言语理解。“体味”侧重仔细体会，搭配“乡愁”更佳；“起步”多用于宏大事业的开端。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 563,
+    "type": "choice",
+    "question": "下列句子中有语病的一项是：( )。",
+    "options": ["原始思维具有拟人化倾向，以具体意象间的类比关系为基础，目的在于揭示某种诉诸我们感官的经验状态。", "在新形势下，我们应该树立新的文化发展观，推进文化体制创新，挖掘特色文化内涵，着力开发富有时代精神和地方特色的文化产品。", "素质可以理解为人在先天条件的基础上，在家庭、社会的影响下，经过后天的教育所形成的稳定的心理品格。", "在经济全球化与文化多元化的时代趋势下，人文社会科学的地位正日益凸显和扩大，每一个有责任感的学者，必将以独立的思考，来回应社会、时代提出的问题。"],
+    "answer": 3,
+    "analysis": "考点：言语理解。D项“地位”与“扩大”搭配不当，地位可以说“提高”或“凸显”。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 564,
+    "type": "choice",
+    "question": "我国海拔最高、面积最大的自然保护区是( )。",
+    "options": ["长白山自然保护区", "三江源自然保护区", "鼎湖山自然保护区", "卧龙自然保护区"],
+    "answer": 1,
+    "analysis": "考点：地理常识。三江源自然保护区是我国面积最大、海拔最高的天然湿地和自然保护区。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 565,
+    "type": "choice",
+    "question": "夏天从冰箱里取出一瓶啤酒，发现啤酒外面“出汗”，对这种现象正确的解释是( )。",
+    "options": ["酒从瓶中渗出", "空气中水蒸气汽化", "啤酒瓶上的水汽化", "空气中水蒸气遇冷液化"],
+    "answer": 3,
+    "analysis": "考点：物理常识。空气中的水蒸气遇到温度较低的啤酒瓶液化形成小水滴。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 566,
+    "type": "choice",
+    "question": "提出“太阳中心说”的是( )。",
+    "options": ["托特雷", "柏拉图", "哥白尼", "布鲁诺"],
+    "answer": 2,
+    "analysis": "考点：科学史。哥白尼提出了日心说（太阳中心说）。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 567,
+    "type": "choice",
+    "question": "为了顺利度过形成期，团队需要( )，其中涉及团队成员互相介绍，了解团队工作方向和领导者对团队的期望。",
+    "options": ["同舟共济", "了解情况", "精益求精", "融入集体"],
+    "answer": 1,
+    "analysis": "考点：团队协作。形成期主要任务是互相了解、明确方向，故选“了解情况”。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 568,
+    "type": "choice",
+    "question": "在北方，人们常用地窖来储存粮食和蔬菜，人们在进入地窖之前，要将地窖的通风口打开一段时间，这么做，最主要是因为( )。",
+    "options": ["地窖内太冷了", "地窖里有大量的二氧化氮", "地窖里有大量的二氧化碳", "地窖里有大量的氧气"],
+    "answer": 2,
+    "analysis": "考点：生物常识。植物呼吸作用产生大量二氧化碳，通风是为了防止人进入后窒息。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 569,
+    "type": "choice",
+    "question": "八月一日建军节是为了纪念( )。",
+    "options": ["中共一大", "南昌起义", "秋收起义", "井冈山会师"],
+    "answer": 1,
+    "analysis": "考点：历史常识。建军节是为了纪念1927年8月1日的南昌起义。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 570,
+    "type": "choice",
+    "question": "1，3，3，6，7，12，15,( )",
+    "options": ["17", "27", "30", "24"],
+    "answer": 3,
+    "analysis": "考点：数字推理。奇数项1,3,7,15，差为2,4,8；偶数项3,6,12,(24)，每项乘2。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 571,
+    "type": "choice",
+    "question": "从3双完全相同的鞋中，随机抽取一双鞋的概率是( )。",
+    "options": ["1/2", "3/5", "1/6", "1/3"],
+    "answer": 1,
+    "analysis": "考点：概率计算。任选一只后，剩5只鞋中有3只可配对，概率为3/5。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 572,
+    "type": "choice",
+    "question": "区分女高音与女中音的主要依据是( )",
+    "options": ["响度", "音调", "音色", "振幅"],
+    "answer": 1,
+    "analysis": "考点：物理常识。音调由频率决定，女高音音调更高。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 573,
+    "type": "choice",
+    "question": "两刑警在追缉某犯罪嫌疑人的过程中，租了一辆出租车。出租车不幸被犯罪嫌疑人炸毁，司机被炸伤，犯罪嫌疑人被刑警击毙。该司机正确的救济途径是下列哪一项？( )",
+    "options": ["请求两刑警给予民事赔偿", "请求两刑警所在的公安局给予国家赔偿", "请求两刑警所在的公安局给予国家补偿", "自认倒霉，因为两刑警的行为并未违法"],
+    "answer": 2,
+    "analysis": "考点：法律常识。警察合法执行公务造成公民损失，应给予国家补偿而非赔偿。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 574,
+    "type": "choice",
+    "question": "沙尘暴是沙暴和尘暴的总称，是指强风把地面大量沙尘物质卷起并吹入空中，使空气特别浑浊，水平能见度小于( )米的严重风沙天气。",
+    "options": ["50", "100", "150", "1000"],
+    "answer": 3,
+    "analysis": "考点：地理常识。沙尘暴水平能见度小于1000米。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 575,
+    "type": "choice",
+    "question": "国际社会公认的“第一礼俗”是( )",
+    "options": ["女士优先", "尊重原则", "宽容的原则"],
+    "answer": 0,
+    "analysis": "考点：礼仪常识。女士优先是国际社会公认的第一礼俗。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 576,
+    "type": "choice",
+    "question": "在职业活动中，主张个人利益高于他人利益、集体利益和国家利益的思想属于( )。",
+    "options": ["极端个人主义", "自由主义", "享乐主义", "拜金主义"],
+    "answer": 0,
+    "analysis": "考点：职业道德。将个人利益凌驾于他人和集体之上属于极端个人主义。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 577,
+    "type": "choice",
+    "question": "为了配合“讲文明、树新风”宣传活动，学校需要建立相关的主题网站，那么下面较为合理的过程是( )。①收集反馈、评价修正；②确定主题设计目标；③规划内容结构、收集信息加工素材；④选择适当工具、制作网站；",
+    "options": ["③②①④", "②①④③", "①③②④", "②③④①"],
+    "answer": 3,
+    "analysis": "考点：信息技术。网站建设合理流程为：确定目标→规划设计→制作→反馈修正。",
+    "tags": ["信息技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 578,
+    "type": "choice",
+    "question": "天气预报看似很( )，只有寥寥几句话，但实际上，要做出( )的天气预报，工程量非常大。而且，气象是一个大环境，大气运动本身又( )，这是天气预报有时不准确的根本原因所在。依次填入划横线部分最恰当的一项( )。",
+    "options": ["轻松 准确 无迹可寻", "平常 精密 变幻莫测", "普通 精确 难以捕捉", "简单 精准 错综复杂"],
+    "answer": 3,
+    "analysis": "考点：言语理解。第一空与“只有寥寥几句话”对应“简单”；第二空强调极准为“精准”；第三空形容大气运动复杂为“错综复杂”。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 579,
+    "type": "choice",
+    "question": "下列哪一选项描述的是竞争关系：( )。",
+    "options": ["鹬蚌相争", "不见兔子不撒鹰", "螳螂捕蝉，黄雀在后", "鸠占鹊巢"],
+    "answer": 3,
+    "analysis": "考点：生物常识。鸠占鹊巢是不同物种争夺生存空间和资源，属于竞争关系。其他多为捕食关系。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 580,
+    "type": "choice",
+    "question": "关于道德，准确的说法是( )。",
+    "options": ["道德就是做好人好事", "做事符合他人利益就是有道德", "道德是处理人与人、人与社会、人与自然之间关系的特殊行为规范", "道德因人、因时而异，没有确定的标准"],
+    "answer": 2,
+    "analysis": "考点：道德概念。道德是调整人们之间以及个人与社会之间关系的行为规范的总和。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 581,
+    "type": "choice",
+    "question": "改革开放以来，我们党对公有制认识上的一个重大突破，就是明确了公有制和公有制的实现形式是两个不同层次的问题。公有制的实现形式是指资产或资本的( )。",
+    "options": ["组织形式和经营方式", "分配形式", "所有权归属", "占有形式"],
+    "answer": 0,
+    "analysis": "考点：经济常识。公有制的实现形式主要指资产的运作（组织形式和经营方式）。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 582,
+    "type": "choice",
+    "question": "协商民主是我国社会主义民主政治的特有形式和独特优势。当前，发挥人民政协作为协商民主重要渠道作用，要重点推进政治协商、民主监督、参政议政( )。",
+    "options": ["制度化、规范化、法制化", "制度化、标准化、程序化", "制度化、规范化、程序化", "现代化、规范化、程序化"],
+    "answer": 2,
+    "analysis": "考点：思想政治。政协工作要推进制度化、规范化、程序化。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 583,
+    "type": "choice",
+    "question": "下列选项与力学有关的是( )。",
+    "options": ["绕梁三日", "四两拨千斤", "坐井观天", "海市蜃楼"],
+    "answer": 1,
+    "analysis": "考点：物理常识。四两拨千斤利用了杠杆原理，属于力学。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 584,
+    "type": "choice",
+    "question": "人们都喜爱观赏日出，无不赞叹太阳升起时的壮观景象。而对日落，却很少有人去流连观赏、吟咏描绘。原因何在？恐怕是一种感情的影响，“日薄西山，气息奄奄”。就连我们的古人不也留下( )的诗句吗？填入画横线部分最恰当的一句是( )",
+    "options": ["“白日依山尽，黄河入海流”", "“大漠孤烟直，长河落日圆”", "“夕阳无限好，只是近黄昏”", "“白日地中出，黄河天外来”"],
+    "answer": 2,
+    "analysis": "考点：言语理解。句意强调日落与衰败的联想，“夕阳无限好，只是近黄昏”最贴切。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 585,
+    "type": "choice",
+    "question": "对以空气柱振动引发的空气动力性噪声的治理，一般采用的措施是( )。",
+    "options": ["安装隔声窗", "安装隔声屏障", "加装减震垫", "安装消声器"],
+    "answer": 3,
+    "analysis": "考点：环保常识。治理空气动力性噪声最常用的是消声器。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 586,
+    "type": "choice",
+    "question": "下列关于钢化玻璃和普通平板玻璃的说法，正确的是( )。",
+    "options": ["钢化玻璃的强度大于普通玻璃", "钢化玻璃的抗冲击度小于普通玻璃", "与普通玻璃相比，钢化玻璃更易破碎", "与钢化玻璃相比，普通玻璃造价更高"],
+    "answer": 0,
+    "analysis": "考点：物理常识。钢化玻璃经过热处理，强度远大于普通玻璃。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 587,
+    "type": "choice",
+    "question": "李鸿章《至总理各国事务衙门函》：“日本君臣发奋为雄，选宗室及大臣子弟之聪秀者，往两国(英、法)制器厂师习各艺，又购制器之器，在本国制习，……去年英人虚声洞吓，以兵临之，然英人所视为攻战之利者，彼已分擅其长，而英人因无论如何也。”这表明李鸿章( )。",
+    "options": ["已找到了强国御辱之道", "主张效法日本全盘西化", "决意严守祖制不动摇", "未找到中国落后的根源"],
+    "answer": 3,
+    "analysis": "考点：历史常识。李鸿章看到日本学习西方器物，但并未认识到中国落后的根本原因在于制度。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 588,
+    "type": "choice",
+    "question": "香烟点燃后，所产生的能减低红细胞将氧气输送到全身的成分是：( )。",
+    "options": ["焦油", "一氧化碳", "苯并芘", "尼古丁"],
+    "answer": 1,
+    "analysis": "考点：生物常识。一氧化碳极易与血红蛋白结合，降低血液输氧能力。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 589,
+    "type": "choice",
+    "question": "太阳直射北回归线时，应是北半球的( )。",
+    "options": ["春分日", "夏至日", "秋分日", "冬至日"],
+    "answer": 1,
+    "analysis": "考点：地理常识。太阳直射北回归线是北半球的夏至日。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 590,
+    "type": "choice",
+    "question": "人们通常把知识分子家庭称作“书香门第”，这里的“书香”原意指的是( )。",
+    "options": ["书中夹香草发出的香味", "书籍的油墨味", "书纸自然发出的清香", "读书人的自称"],
+    "answer": 0,
+    "analysis": "考点：文化常识。古人为了防止蠹虫蛀书，在书中放置香草，故有“书香”之称。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 591,
+    "type": "choice",
+    "question": "西双版纳傣族的竹楼都用方形柱子将房子架空来防止潮湿及蚊虫骚扰，之所以用方形柱子而不是圆形柱子，是为了防止蛇攀爬进入竹楼。下列哪项最有可能是上述陈述的假设？( )",
+    "options": ["傣族人喜欢把东西做成方形的", "蛇喜欢攀爬圆形的柱子", "西双版纳热带雨林中有很多蛇", "蛇不能缠绕着方形的柱子爬行"],
+    "answer": 3,
+    "analysis": "考点：逻辑推理。论证成立需要假设：方形柱子让蛇无法缠绕攀爬。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 592,
+    "type": "choice",
+    "question": "恒温动物比变温动物更有生存优势的原因在于( )。",
+    "options": ["恒温动物耗氧少", "恒温动物需要的食物少", "恒定的体温增强了动物对环境的适应能力", "恒温动物需要的能量少"],
+    "answer": 2,
+    "analysis": "考点：生物常识。恒温动物能维持体温稳定，大大增强了对环境的适应能力。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 593,
+    "type": "choice",
+    "question": "下列不属于发酵技术在食品制作中应用的是：( )。",
+    "options": ["农家自制“猕猴桃”酒", "韩国泡菜", "“老干妈”豆豉", "鸡精"],
+    "answer": 3,
+    "analysis": "考点：生物常识。鸡精是调味品，主要通过工业调配生产，不属于传统发酵食品。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 594,
+    "type": "choice",
+    "question": "早晨进校见到老师，要行礼问早、问好。如遇地方狭窄，应( )。",
+    "options": ["学生给老师让路", "学生或老师让路都可以", "老师给学生让路"],
+    "answer": 0,
+    "analysis": "考点：礼仪常识。尊师重教，狭窄处应学生主动给老师让路。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 595,
+    "type": "choice",
+    "question": "下列说法中，物体的质量和密度都不变的是( )。",
+    "options": ["被“神六”从地面带入太空的照相机", "密闭容器内的冰融化成水", "—支粉笔被老师用去一半", "矿泉水喝掉一半后放入冰箱冻成冰"],
+    "answer": 0,
+    "analysis": "考点：物理常识。照相机带入太空，位置变但质量不变，温度等状态不变则密度不变。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 596,
+    "type": "choice",
+    "question": "中学生小敏在网上购买了一件衣服，穿了两天后发现有严重的质量问题。小敏正确的维权方式是( )。",
+    "options": ["息事宁人，自认倒霉", "辱骂商家，要求赔偿", "直接向人民法院投诉", "与商家协商解决"],
+    "answer": 3,
+    "analysis": "考点：法律常识。消费者权益受损，最直接有效的维权方式是与商家协商。",
+    "tags": ["法律法规"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 597,
+    "type": "choice",
+    "question": "圆周率是一个在数学及物理学领域普遍存在的数学常数。它被定义为圆形之周长与直径之比，是精确计算圆周长、圆面积、球体积等几何形状的关键值。世界上最早计算圆周率数值的是：( )。",
+    "options": ["中国数学家祖冲之", "中国数学家刘徽", "印度数学家阿耶波多", "古希腊数学家阿基米德"],
+    "answer": 3,
+    "analysis": "考点：科学史。古希腊数学家阿基米德最早用科学方法（穷竭法）计算圆周率。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 598,
+    "type": "choice",
+    "question": "长江沿岸地区是我国高度发达的综合性工业地带。下列工业中心与其主要的工业部门组合与实际情况不相符合的是( )。",
+    "options": ["上海——电力", "武汉——钢铁", "六盘水——煤炭", "南京——机械"],
+    "answer": 0,
+    "analysis": "考点：地理常识。上海是综合性工业基地，不是以电力为主。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 599,
+    "type": "choice",
+    "question": "夏天扇扇子，身上就感到凉爽，这主要是因为( )。",
+    "options": ["扇来的风加速了身上汗水的蒸发吸热", "扇来的风将身的热量吹走了", "扇来的风使周围空气的温度降低了", "扇来的风是凉的"],
+    "answer": 0,
+    "analysis": "考点：物理常识。扇风加快了空气流动，促进汗液蒸发吸热。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  }
+]},{
+       "paperId": 7,
+       "paperName": "职业技能测试（四）",
+       "questions":[
+  {
+    "id": 600,
+    "type": "choice",
+    "question": "家用扫描仪是一种( )。",
+    "options": ["输出设备", "存储设备", "输入设备", "控制器"],
+    "answer": 2,
+    "analysis": "考点：计算机硬件。扫描仪负责将纸质信息输入计算机，是输入设备。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 601,
+    "type": "choice",
+    "question": "日晷是古代计量( )的仪器。",
+    "options": ["距离", "位置", "时间"],
+    "answer": 2,
+    "analysis": "考点：历史常识。日晷利用太阳投影方向来测定并划分时刻，是计时仪器。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 602,
+    "type": "choice",
+    "question": "有些树木在深秋会落叶，这种现象发生的原理是( )。",
+    "options": ["为适应温度变化，植物体内的大部分叶绿素转化成花青素", "植物减少蒸腾，保持体内水分的一种适应现象", "增强植物的光合作用，减少天气变化对植物产生的不利影响", "植物个体通过新陈代谢适应外界变化"],
+    "answer": 1,
+    "analysis": "考点：生物常识。落叶是植物为减少水分蒸腾，适应秋冬干旱寒冷气候的现象。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 603,
+    "type": "choice",
+    "question": "南京大屠杀是日本侵略者对中华民族犯下的严重暴行，最真实再现这一事件的是( )。",
+    "options": ["历史学家撰写的有关著作", "南京大屠杀幸存者的回忆", "电影《南京！南京！》", "日本随军记者拍摄的现场照片"],
+    "answer": 3,
+    "analysis": "考点：历史常识。现场照片是当时留下的客观影像资料，最真实直观。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 604,
+    "type": "choice",
+    "question": "下列生活现象用分子的相关知识解释不正确的是。( )",
+    "options": ["湿衣服晾干表明分子在不断地运动", "葡萄酿成酒表明分子的种类发生了变化", "酒精溶于水表明分子间有空隙", "充足气的自行车内胎在烈日下爆裂，表明分子的体积随温度升高而增大"],
+    "answer": 3,
+    "analysis": "考点：物理常识。轮胎爆裂是因为温度升高，分子运动加剧，分子间距离增大（气体膨胀），而不是分子本身的体积增大。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 605,
+    "type": "choice",
+    "question": "玩是孩子的天性，这一点很多做父母的都知道；但是怎么玩，玩什么，很多人未必有( )的认识。孩子本来可以从玩中开发智慧和能力，但却被白白地( )，应该明白，孩子不能为玩而玩，而是要玩出名堂来。填入划横线部分最恰当的一项是( )。",
+    "options": ["明确 消耗", "清楚 浪费", "科学 虚度", "合理 耽误"],
+    "answer": 1,
+    "analysis": "考点：言语理解。“未必有清楚的认识”搭配合理；“白白地浪费”符合语境。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 606,
+    "type": "choice",
+    "question": "中国面积最大的省份是( )。",
+    "options": ["西藏", "青海", "内蒙古", "新疆"],
+    "answer": 3,
+    "analysis": "考点：地理常识。新疆维吾尔自治区面积约166万平方公里，居全国首位。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 607,
+    "type": "choice",
+    "question": "“夕阳无限好，只是近黄昏”是谁的诗句( )。",
+    "options": ["李商隐", "骆宾王"],
+    "answer": 0,
+    "analysis": "考点：文学常识。出自李商隐的《登乐游原》。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 608,
+    "type": "choice",
+    "question": "中国历史上儒家思想经过 2000 多年的不断发展形成了较完整的理论体系。其中荀子对儒家思想的改造主要表现为( )。",
+    "options": ["提倡“仁政”", "主张“礼法并用”", "提倡“以德服人”", "提出“天人感应”"],
+    "answer": 1,
+    "analysis": "考点：历史常识。荀子主张隆礼重法（礼法并用），这是其对儒家思想的重要发展。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 609,
+    "type": "choice",
+    "question": "毛泽东同志在《中国革命战争的战略问题》中指出：在有强大敌军存在的条件下，无论自己有多少军队，一段时间内，主要的使用方向只应有一个，不应有两个。\"该论述体现了( )。",
+    "options": ["集中资源原则", "把握时机原则", "量力而行原则", "扬长避短原则"],
+    "answer": 0,
+    "analysis": "考点：思想政治。强调主要方向只有一个，即集中优势兵力（资源）。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 610,
+    "type": "choice",
+    "question": "下列化学元素对其对应的口腔问题有帮助的是( )。",
+    "options": ["有机硅——牙齿发黄", "氟——牙齿敏感", "焦磷酸盐——防止蛀牙", "氯化锶——预防牙垢"],
+    "answer": 0,
+    "analysis": "考点：化学常识。有机硅常用于美白去黄；氟主要用于防蛀牙。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 611,
+    "type": "choice",
+    "question": "2024×(2.3×47+2.4)÷(2.4×47-2.3)的值为( )。",
+    "options": ["2023", "2024", "2025", "2026"],
+    "answer": 1,
+    "analysis": "考点：数学运算。括号内部分：2.3*47+2.4 = 2.3*47+2.3+0.1 = 2.3*48+0.1 = 110.4+0.1=110.5。分母同理：2.4*47-2.3 = 2.4*47-2.4+0.1 = 2.4*46+0.1 = 110.4+0.1=110.5。两部分相等，结果为2024。",
+    "tags": ["数学运算"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 612,
+    "type": "choice",
+    "question": "近几年，由于我市加大环境整治力度，植树造林，不断扩大绿化面积，周围的鸟类越来越多了，这种现象主要体现了( )",
+    "options": ["环境因素对生物的影响", "生物因素对环境的影响", "非生物因素对生物的影响", "生物对非生物因素的影响"],
+    "answer": 0,
+    "analysis": "考点：生物常识。植树造林改变了环境，引来了鸟类，体现了环境（包括生物和非生物）对生物的影响。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 613,
+    "type": "choice",
+    "question": "马克思说：“火药、罗盘针、印刷术——这是预兆资产阶级社会到来的三项伟大发明。”这句话反映出( )。",
+    "options": ["中国古代发明孕育了西方近代文明", "西方资产阶级将利用这些发明进行侵略扩张", "在特定条件下科技发明对历史发展产生重大影响", "三项伟大发明蕴含资本主义因素"],
+    "answer": 2,
+    "analysis": "考点：思想政治。马克思的话强调了科技发明对社会转型（资本主义社会到来）的巨大推动作用。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 614,
+    "type": "choice",
+    "question": "( )是合作的基础。",
+    "options": ["沟通", "倾听", "决策", "诚信"],
+    "answer": 0,
+    "analysis": "考点：团队协作。沟通是合作的前提和基础。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 615,
+    "type": "choice",
+    "question": "《齐民要术》中有这样一段描述：“凡五果，花盛时遭霜，则无子。天雨新晴，北风寒彻，是夜必霜。”“天雨新晴，北风寒彻”造成“是夜必霜”的原因是( )。",
+    "options": ["雨后的夜晚气温必定很低", "受冷气团影响加之晴朗的夜晚，大气逆辐射较弱", "晴朗的夜晚，地面辐射减弱", "晴朗的夜晚，大气逆辐射加强"],
+    "answer": 1,
+    "analysis": "考点：地理常识。雨后新晴，云量少，大气逆辐射弱，地面散热快，加上冷气团影响，气温骤降成霜。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 616,
+    "type": "choice",
+    "question": "95，88，71，61，50，( )",
+    "options": ["40", "39", "38", "37"],
+    "answer": 0,
+    "analysis": "考点：数字推理。各项十位与个位数字之和分别为：14, 16, 8, 7, 5，暂无直接规律。换个思路：各项分别为 10^2-5, 9^2+7, 8^2+7, 7^2+12... 暂无明显规律。若看差值：-7, -17, -10, -11，也无规律。常规题库规律：95->9+5=14, 88->16, 71->8, 61->7, 50->5，首尾配对？其实规律是：95(9+5=14), 88(8+8=16), 71(7+1=8), 61(6+1=7), 50(5+0=5), 40(4+0=4)，且十位数递减9,8,7,6,5,4，选A。",
+    "tags": ["逻辑思维"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 617,
+    "type": "choice",
+    "question": "下列城市中，均属于世界著名的国际金融中心的是( )。",
+    "options": ["北京、东京", "华盛顿、巴黎", "伦敦、苏黎世", "纽约、悉尼"],
+    "answer": 2,
+    "analysis": "考点：地理常识。伦敦和苏黎世都是世界公认的国际金融中心。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 618,
+    "type": "choice",
+    "question": "关于生活知识，下列说法错误的是：( )。",
+    "options": ["缺碘可能会患“大脖子病”", "吃水果有助于补充维生素", "甲醛可以用作药品的防腐剂", "废电池回收可减少重金属污染"],
+    "answer": 2,
+    "analysis": "考点：化学常识。甲醛有毒，严禁用作药品防腐剂。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },{
+    "id": 619,
+    "type": "choice",
+    "question": "飞到月亮上去是人类千百年来的梦想，随着空间技术的发展，人类登月已经实现。下列有关人类登月的说法有误的是( )。",
+    "options": ["前苏联宇航员加加林于1961年乘东方一号宇宙飞船奔向月球", "美国宇航员阿姆斯特朗 1969 年在月球上率先跨出人类历史“一大步”", "2013 年我国成功将“玉兔号”巡视器顺利送抵月球表面", "美国是人类最早登上月球的国家"],
+    "answer": 0,
+    "analysis": "考点：科学史。加加林是人类第一个进入太空的人，但他并没有飞向月球，而是绕地球飞行。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 620,
+    "type": "choice",
+    "question": "下列不属于自然资源的是( )。",
+    "options": ["天然森林", "阳光", "水泥", "土地"],
+    "answer": 2,
+    "analysis": "考点：地理常识。自然资源是自然界天然存在的，水泥是人工加工的产品。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 621,
+    "type": "choice",
+    "question": "下列有关文学常识的表述，不正确的一项是( )。",
+    "options": ["《红楼梦》又名《石头记》，是清代作家曹雪芹所著，后四十回一般认为是高鹗所续，这是一部具有高度思想性和艺术性的伟大作品，在我国文学史和世界文学都占有极其重要的地位。", "鲁迅，原名周树人，他的第一篇白话小说是《狂人日记》；小说集有《呐喊》《彷徨》《朝花夕拾》。《祝福》《药》就选自他的小说集《彷徨》。", "海明威，美国现代作家，1954 年度的诺贝尔文学奖获得者，代表作有《太阳照样升起》《永别了，武器》、《丧钟为谁而鸣》等。他在 50 年代塑造了一批以《老人与海》中的圣地亚哥为代表的“硬汉形象。”", "唐代是我国诗歌发展的一个高峰时期，出现了以李白、杜甫、白居易为代表的一大批优秀的诗人，他们虽然写作风格不尽相同，但都在文学史上留下了辉煌的诗篇。"],
+    "answer": 1,
+    "analysis": "考点：文学常识。B项错误，《朝花夕拾》是散文集，不是小说集。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 622,
+    "type": "choice",
+    "question": "某商场举办羽绒服专卖会，一件羽绒服连续两次 8 折降价销售(即连续2次降价20%），降价后的价格为 320 元，问原价是多少？( )",
+    "options": ["500", "450", "400", "600"],
+    "answer": 0,
+    "analysis": "考点：数学运算。设原价为x，x × 0.8 × 0.8 = 320，解得x = 500。",
+    "tags": ["数学运算"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 623,
+    "type": "choice",
+    "question": "我国北方地区秋冬季节，有时房顶会出现霜、玻璃上出现冰花、树枝上出现雾凇，这些现象的成因属于( )。",
+    "options": ["凝固", "汽化", "凝华", "升华"],
+    "answer": 2,
+    "analysis": "考点：物理常识。气态水蒸气直接变为固态冰晶的过程叫做凝华。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 624,
+    "type": "choice",
+    "question": "一位美国著名记者赞叹道：“每一场革命都有它自身的传奇。毛泽东率领数万工农红军所完成的战略转移，就是中国革命史上的伟大传奇。”他所说的“伟大传奇”是指红军( )。",
+    "options": ["千里跃进大别山", "开辟井冈山根据地", "两万五千里长征", "开辟敌后战场"],
+    "answer": 2,
+    "analysis": "考点：历史常识。红军战略转移指的是两万五千里长征。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 625,
+    "type": "choice",
+    "question": "《诗经》是我国第一部诗歌总集，《诗经》里面包括多少首诗？( )",
+    "options": ["三百首", "三百零五首"],
+    "answer": 1,
+    "analysis": "考点：文学常识。《诗经》收录了从西周初年到春秋中叶的诗歌305篇。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 626,
+    "type": "choice",
+    "question": "抗日民族统一战线中的中间势力不包括( )。",
+    "options": ["民族资产阶级", "城市小资产阶级", "地方实力派", "开明绅士"],
+    "answer": 1,
+    "analysis": "考点：历史常识。中间势力指民族资产阶级、开明绅士和地方实力派。城市小资产阶级属于进步势力。",
+    "tags": ["人文知识"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 627,
+    "type": "judge",
+    "question": "达尔文的《物种起源》的中心观点是物竞天择，适者生存。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：科学常识。这是达尔文进化论的核心观点。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 628,
+    "type": "judge",
+    "question": "味精的主要成分是谷氨酸钠。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：化学常识。表述正确。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 629,
+    "type": "judge",
+    "question": "联合国的五个常任理事国分别是：中国、美国、英国、印度、俄罗斯。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：政治常识。常任理事国是中国、美国、英国、法国、俄罗斯，没有印度。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 630,
+    "type": "judge",
+    "question": "中国民间“送灶神”时要吃粘牙的甜食，这是为了用糖粘住灶神的牙。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：文化常识。寓意让灶神上天多说好话，不说坏话。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 631,
+    "type": "judge",
+    "question": "在“精卫填海”的故事里，“精卫”是一只鸟。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：文化常识。精卫是炎帝女儿溺水后化成的一种神鸟。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 632,
+    "type": "choice",
+    "question": "下列各句中成语使用恰当的一句是( )。",
+    "options": ["刚才放的那几首歌都不大好听，只有这一首还差强人意。", "他爸爸是乐队指挥，妈妈是歌唱家，平日耳闻目睹，所以他也爱好音乐。", "小明犯了错误总好狡辩，你说他一句，他就举一反三，还你好多句。", "这本书的情节引人入胜，读起来真让人津津乐道。"],
+    "answer": 0,
+    "analysis": "考点：言语理解。A项“差强人意”指大体上还能使人满意，使用正确；B项“耳闻目睹”应为“耳濡目染”；C项“举一反三”是褒义词，不能用于狡辩；D项“津津乐道”不能带宾语。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 633,
+    "type": "choice",
+    "question": "小友对好朋友小情说：你的英语真棒，我要向你学习，并向你挑战；小情说：你的数学思维灵活，我要向你请教，我相信我也能学好数学。可见学习生活中，我们要( )。①要正确处理竞争与合作关系②学习别人优点实现共同进步③合作可以实现彼此优势互补④竞争会造成同学间两败俱伤",
+    "options": ["①②③", "②③④", "①③④", "①②④"],
+    "answer": 0,
+    "analysis": "考点：道德素养。④“竞争会造成两败俱伤”说法过于绝对，良性竞争能促进共同进步，故排除。①②③均符合题意。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 634,
+    "type": "choice",
+    "question": "下列做法中符合用电安全的是( )。",
+    "options": ["为使用方便，应将销售到农村地区的空调三脚插头改为两脚插头", "发生触电事故后，应先切断电源再救治", "为安全起见，保险丝应尽可能粗", "当电器发生起火事故时，应迅速泼水灭火"],
+    "answer": 1,
+    "analysis": "考点：物理常识。发生触电时先断电再救人；三脚改两脚会失去接地保护；保险丝不能随意加粗；电器起火不能用水灭。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 635,
+    "type": "choice",
+    "question": "“风声雨声读书声声声入耳”中不属于自然界的声音的是( )。",
+    "options": ["风声", "读书声", "雨声"],
+    "answer": 1,
+    "analysis": "考点：生活常识。风声和雨声是自然界的物理现象，读书声是人类活动产生的声音。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 636,
+    "type": "choice",
+    "question": "“人生没有真正的完美，只有不完美才是最真实的美；人生没有一帆风顺，只有披荆斩棘才能路路顺。”这段话告诉我们( )。",
+    "options": ["生命的意义需要自我发现，但不是通过成功体现的", "挫折是生命成长的一部分，人们面对挫折有不同的行为反应是正常的", "生活难免有挫折，它有利于人们磨砺意志，获得经验", "要培养面对困难的勇气，接纳自己的不完美是探索生命意义对我们的要求"],
+    "answer": 2,
+    "analysis": "考点：心理健康。题干强调“披荆斩棘才能路路顺”，即经历挫折才能获得磨砺，C项最符合主旨。",
+    "tags": ["心理健康"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 637,
+    "type": "choice",
+    "question": "关于空气负离子，下列说法错误的是：( )。",
+    "options": ["雷雨过后空气负离子浓度相对较高", "海滨地区空气负离子含量相对较低", "是评价环境和空气质量的重要标准", "负离子对细菌、病毒均有灭活作用"],
+    "answer": 1,
+    "analysis": "考点：科学常识。海滨地区由于海浪拍打产生瀑布效应，空气中负离子含量相对较高，而非较低。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 638,
+    "type": "choice",
+    "question": "美国：旧金山( )",
+    "options": ["韩国：釜山", "法国：撒哈拉", "德国：威尼斯", "日本：檀香山"],
+    "answer": 0,
+    "analysis": "考点：类比推理。旧金山是美国的城市，釜山是韩国的城市，二者逻辑关系一致。",
+    "tags": ["逻辑思维"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 639,
+    "type": "choice",
+    "question": "在资本主义经济危机期间，常常出现：牧场主将牛奶倒入大海，农场主将土豆翻入地下当作肥料，与此同时，社会上出现大量工人失业，他们靠领取救济金存活下去。这种现象表明经济危机的特征是( )。",
+    "options": ["生产绝对过剩", "生产的无政府状态", "生产相对过剩", "生产无限扩大趋势"],
+    "answer": 2,
+    "analysis": "考点：经济常识。资本主义经济危机的本质特征是生产相对过剩，即相对于劳动人民有支付能力的需求来说，商品生产过剩。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 640,
+    "type": "choice",
+    "question": "低密度聚乙烯(LDPE)塑料常用于制作药品与食品包装薄膜。低密度聚乙烯塑料属于( )。",
+    "options": ["复合材料", "合成材料", "金属材料", "无机非金属材料"],
+    "answer": 1,
+    "analysis": "考点：化学常识。塑料是三大合成材料（塑料、合成橡胶、合成纤维）之一。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 641,
+    "type": "choice",
+    "question": "据新华社电，我国第一艘航母“辽宁舰”交接入列后，海军官兵以科学求实的态度和顽强拼搏的精神，按计划迅速投入紧张的出海训练和科研试验任务中。期间，顺利进行了歼—15飞机起降飞行训练。目前，歼—15飞机的起飞方式是( )。",
+    "options": ["电磁弹射起飞", "蒸汽弹射起飞", "垂直起飞", "滑跃式起飞"],
+    "answer": 3,
+    "analysis": "考点：军事常识。“辽宁舰”采用的是滑跃式起飞甲板，歼—15通过滑跃式起飞。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 642,
+    "type": "judge",
+    "question": "“神舟 7 号”是航天飞机。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：科学常识。神舟系列是载人飞船，不是航天飞机。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 643,
+    "type": "judge",
+    "question": "《黄河大合唱》的作曲者是冼星海。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：文化常识。表述正确。作词是光未然，作曲是冼星海。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 644,
+    "type": "judge",
+    "question": "馒头起源于北方。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：文化常识。相传馒头起源于三国时期的南方（蜀国），由诸葛亮发明。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 645,
+    "type": "judge",
+    "question": "鲸是海洋中最大的哺乳动物。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：生物常识。蓝鲸是地球上现存最大的动物，属于哺乳动物。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 646,
+    "type": "judge",
+    "question": "世界上掌握大深度载人深潜技术的国家有美国、德国、俄罗斯、日本、中国。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：科学常识。应为美国、法国、俄罗斯、日本、中国。德国不在其中。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  }]},{
+       "paperId": 8,
+       "paperName": "职业技能测试（五）",
+       "questions":[
+  {
+    "id": 700,
+    "type": "choice",
+    "question": "随着电子技术的发展，电动自行车的设计促进了电动车电机技术的发展，使电机符合电动车的需要这体现了( )。",
+    "options": ["设计是技术发展的重要驱动力", "技术就是设计", "技术的发展为设计创新提供了条件", "设计是技术的平台，没有设计做基础技术将难以表现和实现"],
+    "answer": 0,
+    "analysis": "考点：技术与设计的关系。电动车的设计需求推动了电机技术的革新，体现了设计是技术发展的重要驱动力。",
+    "tags": ["通用技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 701,
+    "type": "choice",
+    "question": "从 19 世纪 50 年代末到 80 年代，侵占中国领土最多的国家是( )。",
+    "options": ["英国", "法国", "美国", "俄国"],
+    "answer": 3,
+    "analysis": "考点：历史常识。第二次鸦片战争前后，俄国通过一系列不平等条约侵占了中国北方150多万平方公里的领土，是侵占中国领土最多的国家。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 702,
+    "type": "choice",
+    "question": "关于人类探月，下列说法不正确的是( )。",
+    "options": ["“嫦娥一号”是我国的登月工程", "阿姆斯特朗是登陆月球第一人", "“阿波罗计划”是美国的登月工程", "美国发射的“月球陨坑观测与遥感卫星”在月球上发现了水"],
+    "answer": 0,
+    "analysis": "考点：科学常识。“嫦娥一号”是我国的首颗绕月人造卫星，是我国探月工程的第一步（绕月），而非载人登月工程。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 703,
+    "type": "choice",
+    "question": "被告姚某因为在淘宝网上销售掺假的某品牌猫粮，违反了双方“用户不得在淘宝平台上销售侵犯他人知识产权或其他合法权益的商品”的约定，后被法院判令被告姚某赔偿原告淘宝网损失人民币10万元及赔偿原告淘宝网合理支出人民币2万元。对此认识正确的是( )。",
+    "options": ["淘宝网假货横行，只起诉一个姚某有违社会公平", "姚某没有依法履行合同义务，是较为典型的民事违法行为", "淘宝网维护了自己的权益，但是没有尊重商家的权益", "姚某没有严格遵守治安管理的法律规定，不利于社会和谐"],
+    "answer": 1,
+    "analysis": "考点：法律常识。姚某违反了与平台的约定，属于违约行为，应承担民事赔偿责任。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 704,
+    "type": "choice",
+    "question": "( )是通过硒鼓中的碳粉来印刷字符图形的。",
+    "options": ["激光打印机", "针式打印机", "喷墨打印机", "热敏打印机"],
+    "answer": 0,
+    "analysis": "考点：信息技术。激光打印机利用激光扫描和硒鼓吸附碳粉的静电原理来成像。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 705,
+    "type": "choice",
+    "question": "以下各种结构中，其中不同于另外三个的是( )。",
+    "options": ["天文台穹顶", "长城", "大坝", "桥墩"],
+    "answer": 0,
+    "analysis": "考点：通用技术。天文台穹顶属于壳体结构，长城、大坝、桥墩主要承受压力，属于实体结构。",
+    "tags": ["通用技术"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 706,
+    "type": "choice",
+    "question": "黄旭华，我国第一代攻击型核潜艇和战略导弹核潜艇总设计师。他远离家乡荒岛求索，深藏功名三十载，在一穷二白中“头拱地、脚朝天，也要把核潜艇搞出来。”对黄旭华的这种付出，下列认识错误的是( )。",
+    "options": ["回报远远小于代价，这种付出不值得", "他实现了自身价值，让生命更有意义", "他履行自己的职责，不言代价与回报", "他具有强烈的爱国情怀和社会责任感"],
+    "answer": 0,
+    "analysis": "考点：思想政治。黄旭华院士为国家做出巨大贡献，其人生的社会价值是无法用物质回报衡量的，A项说法错误。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 707,
+    "type": "choice",
+    "question": "下列选项中，国家与建筑物相对应的是( )。",
+    "options": ["美国——凯旋门", "印度—金字塔", "奥地利——金色大厅", "法国——自由女神像"],
+    "answer": 2,
+    "analysis": "考点：地理文化常识。凯旋门在法国，金字塔在埃及，自由女神像在美国，金色大厅在奥地利维也纳。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 708,
+    "type": "choice",
+    "question": "在正式场合，女士不化妆会被认为是不礼貌的，要是活动时间长了，应适当补妆，但要在( )补妆。",
+    "options": ["办公室", "洗手间", "公共场所"],
+    "answer": 1,
+    "analysis": "考点：礼仪常识。补妆属于私人行为，应在洗手间等私密场所进行，不宜在公共场所或办公室当众补妆。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 709,
+    "type": "choice",
+    "question": "关于地球自转和公转的叙述，正确的是( )。",
+    "options": ["转动方向一致，都是自西向东", "自转和公转的速度相同", "转动周期相同", "自转产生昼夜长短的变化，公转产生昼夜更替的变化"],
+    "answer": 0,
+    "analysis": "考点：地理常识。地球自转和公转方向都是自西向东；自转产生昼夜更替，公转产生四季和昼夜长短变化。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 710,
+    "type": "choice",
+    "question": "电视剧《跨过鸭绿江》用历史教科书式的讲述，带领观众回望历史、目睹英雄。该剧在央视一套领跑收视榜，打动了无数观众。“热血”“制作精良”“很感人”“导向好”“时代感强”等成为观众评价该剧的高频词。该剧的成功表明( )。①以真实历史为依据进行创作才具有价值②大众传媒是文化传播的重要手段③社会主义文化应以高尚精神塑造人④影视创作应有家国情怀，弘扬正能量",
+    "options": ["①③", "②④", "①②", "③④"],
+    "answer": 3,
+    "analysis": "考点：思想政治。①说法过于绝对；②题干未重点强调大众传媒的传播手段，而是强调内容质量。③④符合该剧弘扬主旋律、传递正能量的成功要素。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 711,
+    "type": "choice",
+    "question": "青铜壶是春秋战国时期重要的生活器皿，当时铸造壶器可以采用下列哪项先进技术？( )。",
+    "options": ["金银错技术", "焊接技术", "抛光技术", "淬火技术"],
+    "answer": 0,
+    "analysis": "考点：历史常识。金银错技术是春秋战国时期青铜器装饰的一种新工艺。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 712,
+    "type": "choice",
+    "question": "生物能适应环境，也能影响环境。下列现象中与此观点不符的是( )。",
+    "options": ["骆驼刺的根系非常发达", "地衣风化岩石，促进地球土壤形成", "沙漠中的仙人掌，叶变成了刺状", "化工厂周边环境中的苔藓发黄枯萎"],
+    "answer": 3,
+    "analysis": "考点：生物常识。D项苔藓发黄枯萎是因为化工厂排放的有毒物质破坏了环境，体现了环境对生物的影响，而不是生物适应或影响环境。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 713,
+    "type": "choice",
+    "question": "关于文学作品，下列对应正确的是( )。",
+    "options": ["于连——《红与黑》——大仲马", "《玩偶之家》——易卜生——挪威", "《罪与罚》——陀思妥耶夫斯基——德国", "泼留希金——《复活》——果戈理"],
+    "answer": 1,
+    "analysis": "考点：文学常识。《红与黑》作者是司汤达；陀思妥耶夫斯基是俄国人；泼留希金出自《死魂灵》。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 714,
+    "type": "choice",
+    "question": "《金粉世家》的作者是( )。",
+    "options": ["徐枕亚", "张恨水", "周瘦鹃", "包天笑"],
+    "answer": 1,
+    "analysis": "考点：文学常识。《金粉世家》是张恨水的代表作。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 715,
+    "type": "choice",
+    "question": "根据我国法律的有关规定，下列情形中不能减轻或免除法律责任的是( )。",
+    "options": ["家住偏僻山区的蒋某把入室抢劫的康某捆绑起来，关押了六小时后，才将康某押送到 40 里外的乡派出所", "蔡某偷了一辆价值 150 元的自行车，十年后被人查出", "医生李某征得患者王某的同意，锯掉其长有恶性肿瘤的小腿", "高某在与三个青年打架时，拔出刀子将对方一人刺成重伤"],
+    "answer": 3,
+    "analysis": "考点：法律常识。高某的行为属于故意伤害（重伤），超出了正当防卫或防卫过当的范畴，不能减轻或免除法律责任。",
+    "tags": ["法律法规"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 716,
+    "type": "choice",
+    "question": "1644 年攻入北京推翻明朝的是( )。",
+    "options": ["黄巢", "吴三桂", "李自成", "朱温"],
+    "answer": 2,
+    "analysis": "考点：历史常识。1644年，李自成率领农民军攻入北京，明朝灭亡。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 717,
+    "type": "choice",
+    "question": "李鸿章认为，要改变中国贫弱的现状，“必先求富，而后才能自强”。下列企业体现“求富”这一思想的是( )。",
+    "options": ["天津机器局", "上海机器织布局", "福州船政局", "江南机器制造总局"],
+    "answer": 1,
+    "analysis": "考点：历史常识。洋务运动前期“自强”创办军事工业（A、C、D），后期“求富”创办民用工业（B）。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 718,
+    "type": "choice",
+    "question": "著有长篇小说《上尉的女儿》，被誉为“俄国文学之父”的作家是( )。",
+    "options": ["普希金", "契诃夫", "列夫•托尔斯泰", "法捷耶夫"],
+    "answer": 0,
+    "analysis": "考点：文学常识。普希金是俄国浪漫主义文学的杰出代表，被誉为“俄国文学之父”。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 719,
+    "type": "choice",
+    "question": "百年征程波澜壮阔，百年初心历久弥坚。中国共产党从建国初期的 50 多名党员发展到今天拥有 9000 多万名党员，已成为名副其实的超大型政党。在党的领导下，中国已跻身世界第二大经济体，中华民族正走向伟大复兴。这表明中国共产党( )。①始终坚持以人民为中心②执政根基进一步夯实③不断完善经济建设职能④始终发挥先锋模范作用",
+    "options": ["①②", "①③", "②④", "③④"],
+    "answer": 0,
+    "analysis": "考点：思想政治。③经济建设职能由政府履行，党不是国家机关；④发挥先锋模范作用的是党员，不是党组织整体。",
+    "tags": ["思想政治"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 720,
+    "type": "choice",
+    "question": "中国共产党第一次自主地运用马列主义基本原理解决中国革命问题的会议是( )。",
+    "options": ["“八七”会议", "遵义会议", "瓦窑堡会议", "十一届三中全会"],
+    "answer": 1,
+    "analysis": "考点：历史常识。遵义会议是中国共产党第一次独立自主地运用马克思列宁主义基本原理解决自己的路线、方针和政策的会议。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 721,
+    "type": "choice",
+    "question": "桂林山水、凤凰古城、崆峒风景、黄果树风景名胜区等声：我国西部少数民族地区非常有名的风景区，假如你到这些风景区去游览，应自觉做到( )。①尊重当地少数民族的宗教信仰②尊重当地少数民族的风俗习惯③尊重当地少数民族的语言文字④尊重当地少数民族的一切要求",
+    "options": ["②③", "①②③", "③④", "①②"],
+    "answer": 1,
+    "analysis": "考点：思想政治。④“一切要求”表述错误，对于不合理的要求不能盲目尊重。①②③是尊重少数民族的正确做法。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 722,
+    "type": "choice",
+    "question": "下列句子中，表达得体的一项是( )。",
+    "options": ["春节，小李给老师拜年：“您的高足叩问老师金安！”", "多年不见的老乡捎来了家乡的土特产，我推辞不了，只好笑纳了。", "欣闻敝校百年校庆，本人忝为校友，因事不能恭临为歉。", "涂鸦之作，不值先生一哂，如蒙赐正，不胜感激"],
+    "answer": 3,
+    "analysis": "考点：言语理解。A项“高足”称别人的学生；B项“笑纳”是请对方收下；C项“恭临”多指亲自到场；D项用语谦敬得当。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 723,
+    "type": "choice",
+    "question": "下列情境最不可能发生在唐代的是：( )。",
+    "options": ["有店铺在售卖玛瑙", "看到工匠修造乐山大佛", "文人手握自己诗集的印刷版", "用“宝钞”在集市上购买物品"],
+    "answer": 3,
+    "analysis": "考点：历史常识。“宝钞”是明朝发行的纸币，唐代不可能出现。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 724,
+    "type": "choice",
+    "question": "下列关于文化遗址、出土文物和遗址所在地对应关系正确的是：( )。",
+    "options": ["仰韶村遗址——人面鱼纹彩陶盆——湖南", "龙山文化遗址——中华第一龙——山东", "殷墟遗址——后母戊大方鼎——河南", "三星堆遗址——青铜神树——重庆"],
+    "answer": 2,
+    "analysis": "考点：历史常识。A项仰韶在河南；B项“中华第一龙”在红山文化（内蒙古）；D项三星堆在四川。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 725,
+    "type": "choice",
+    "question": "下列仪器中不能用作反应容器的是( )。",
+    "options": ["烧杯", "集气瓶", "试管", "容器瓶"],
+    "answer": 3,
+    "analysis": "考点：化学常识。容量瓶（容器瓶）只能用于配制溶液，不能用作反应容器，也不能加热。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 726,
+    "type": "choice",
+    "question": "下列各句中，没有语病的一句是( )。",
+    "options": ["这些从地方“车改”中冒出来的问题有的是技术性的，有的则是体制性的。随着“车改”的深入推进，更多的利益会被触动，困难也会更多。", "当前，绝大多数党员干部是清廉的，节俭的，但也有一些党员干部身上还存在不清廉的问题，突出表现就是在公款旅游和超标准接待上", "在广大群众的支持、理解和配合下，已经结束了的四次国庆演练均收到了预期的效果，及时发现和解决了筹备工作中的有关问题。", "矿难发生后，大批子弟兵在前往救援时，许多专业心理救助人员也赶赴救援现场，第一时间对获救矿工及遇难矿工家属进行心理治疗。"],
+    "answer": 0,
+    "analysis": "考点：言语理解。B项句式杂糅；C项语序不当且成分残缺；D项“大批子弟兵……”与“许多专业心理救助人员……”句式杂糅。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 727,
+    "type": "choice",
+    "question": "下列各句中，没有语病的一句是( )。",
+    "options": ["微电影，从关爱孤儿、帮扶贫弱到热爱自然、保护环境等多个方面已广泛发挥作用，艺术的力量已日益增强。", "钟南山院士关于雾霾的阐述十分清楚地表达了雾霾对人体具有诱发脑出血、高血压等显著影响。", "我国企业要建立健全工程管理体系和质量保证体系等管控体制机制，向创新管理要发展，确保工程质量，力争在出口方面取得更大成绩。", "新时代农民工自从被列入政府重点关注的对象之后，各级政府积极行动，将关心新时代农民工成长作为新一年度的工作重点。"],
+    "answer": 2,
+    "analysis": "考点：言语理解。A项语序不当；B项缺宾语中心语；D项缺少主语（或主语中途易辙）。C项没有语病。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 728,
+    "type": "choice",
+    "question": "下列各句中加横线成语的使用，正确的一项是( )。",
+    "options": ["近日，上海白天出现雨雪天气，在一些区域和时段，雪花沸反盈天，扑面而来，让人感到已进入深冬。", "连绵的春雨中，我住进了医院，百无聊赖地躺在病床上玩游戏，而窗外是昏黄色的天和铁灰色的楼，这让我的心情渐渐沉入谷底。", "从鲁迅的小说《祝福》中“我”与“四叔”的谈话不怎么投机来看，两人的关系有些非亲非故。", "阅读要像少侠行走江湖一样，将每本书作者的一得之见都通过揣摩、吸收化为己有，通过博采众长，最终练成绝世武功。"],
+    "answer": 1,
+    "analysis": "考点：言语理解。A项“沸反盈天”形容人声喧闹，不形容雪花；C项“非亲非故”指毫无关系；D项“一得之见”多作谦辞，不能用于指他人；B项“百无聊赖”使用正确。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 729,
+    "type": "choice",
+    "question": "下列做法和说法中不正确的是( )。",
+    "options": ["用硫酸铜溶液浸泡粽子叶，包出的粽子色泽鲜亮，营养丰富。", "高温杀毒的原因是高温能够破坏病原体蛋白质的生理活性。", "人体所需要的热量约70%来自糖类，其来源主要是淀粉。", "尼古丁是一种有毒物质，会使吸烟者产生依赖，所以我们要拒绝烟草。"],
+    "answer": 0,
+    "analysis": "考点：化学常识。硫酸铜属于重金属盐，有毒，严禁用于食品加工。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 730,
+    "type": "choice",
+    "question": "成语“白驹过隙”比喻：( )。",
+    "options": ["速度飞快", "时光飞逝", "匆匆而过"],
+    "answer": 1,
+    "analysis": "考点：文化常识。白驹过隙形容时间像小白马在细小的缝隙前跑过一样，比喻时间过得极快。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 731,
+    "type": "choice",
+    "question": "下列关于物质的用途不正确的是( )。",
+    "options": ["用熟石灰改良酸性土壤", "在医疗上用碳酸氢钠来治疗胃酸过多", "有些净水器利用活性炭未吸附、过滤水中的杂质", "商家用甲醛水溶液(福尔马林)浸泡海产品来延长海产品的保质期"],
+    "answer": 3,
+    "analysis": "考点：化学常识。甲醛有毒，严禁用于食品防腐保鲜。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 732,
+    "type": "choice",
+    "question": "下列说法符合生物常识的是：( )。",
+    "options": ["蜜蜂用头部的螯针蜇人", "蜻蜓拥有咀嚼式的口器", "蚂蚁出生后由雄蚁喂养", "蟋蟀依靠口器发出声音"],
+    "answer": 1,
+    "analysis": "考点：生物常识。蜜蜂的螯针在尾部；蚂蚁由工蚁喂养；蟋蟀靠翅膀摩擦发声。蜻蜓具有咀嚼式口器，B项正确。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 733,
+    "type": "choice",
+    "question": "下列各组词语中，没有错别字的一组是( )。",
+    "options": ["卓见 真知灼见 疾驶 疾风劲草", "消灭 销声匿迹 滂沱 气势滂礴", "冒犯 贸然行动 呼吁 长吁短叹", "淡薄 淡泊明志 辕马 心猿意马"],
+    "answer": 0,
+    "analysis": "考点：言语理解。B项“滂礴”应为“磅礴”；C项“贸然行动”应为“冒然行动”？实际上“贸然”是正确的。但“呼吁”和“长吁短叹”读音不同，书写正确。D项“辕马”应为“猿马”。A项全部正确。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 734,
+    "type": "choice",
+    "question": "下列科技成就与用途的对应，错误的是：( )。",
+    "options": ["“甘霖-I”—人工影响天气无人机", "“深海一号”—半潜式生产储油平台", "“天河二号”—深海探测器", "“蓝鲸 2 号”—半潜式钻井平台"],
+    "answer": 2,
+    "analysis": "考点：科学常识。“天河二号”是超级计算机，不是深海探测器。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 735,
+    "type": "choice",
+    "question": "真正友谊的产物，只是一种( )了你身心的愉快。没有这种愉快，随你如何直谅多闻，也不会有友谊。接触着你真正的朋友，感觉到这种愉快，你内心的鄙吝残忍，自然会消失，无需说教式的( )。填入横线部分最恰当的一项是：( )",
+    "options": ["贯穿 指导", "贯穿 劝说", "渗透 诱导", "渗透 劝导"],
+    "answer": 3,
+    "analysis": "考点：言语理解。“渗透”比“贯穿”更符合情感或愉快深入身心的语境；“劝导”比“诱导”更适合说教式的语境。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 736,
+    "type": "choice",
+    "question": "一个国家中的文化精华，称其为“国粹”。中国的三大国粹为( )。",
+    "options": ["儒学、国画和针灸", "茶艺、昆曲和武术", "瓷器、书法和儒学", "国画、京剧和中医"],
+    "answer": 3,
+    "analysis": "考点：文化常识。中国三大国粹通常指誉满中外的中国京剧、中国画、中国医学。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 737,
+    "type": "choice",
+    "question": "王某因为谎报警情，被公安机关作出了拘留五日的处罚；谢某因殴打他人致重伤被判处有期徒刑3年。二者行为分别属于( )。",
+    "options": ["行政违法行为 刑事违法行为", "民事违法行为 刑事违法行为", "行政违法行为 民事违法行为", "刑事违法行为 行政违法行为"],
+    "answer": 0,
+    "analysis": "考点：法律常识。谎报警情受到行政处罚，属于行政违法行为；殴打致重伤被判刑，属于刑事违法行为。",
+    "tags": ["法律法规"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 738,
+    "type": "choice",
+    "question": "关于中国古代名画，下列说法正确的是：( )。",
+    "options": ["《韩熙载夜宴图》创作于唐玄宗时期", "《千里江山图》是北宋时期的宫廷画作", "《富春山居图》现藏于北京故宫博物院", "《洛神赋图》的作者是建安文学的代表人物"],
+    "answer": 1,
+    "analysis": "考点：文化常识。A项为五代；C项分为两段，分藏浙江省博和台北故宫；D项作者顾恺之是东晋画家，不是建安文学代表。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 739,
+    "type": "choice",
+    "question": "下列生活常识叙述正确的是( )。",
+    "options": ["衣服染上墨水可用牛奶清洗", "早上蜘蛛网上有水珠表示要下雨", "火灾中如果身上着火要马上拍打", "水果榨汁喝更容易吸收维生素"],
+    "answer": 0,
+    "analysis": "考点：生活常识。牛奶中的蛋白质可与墨水中的染料结合，有助于清洗。身上着火不能拍打；榨汁会破坏部分维生素。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 740,
+    "type": "choice",
+    "question": "甲、乙、丙三个工程队，一起负责两段工程的施工，甲、乙两队先做第一段工程，丙组先做第二段工程，然后中途，乙去帮丙做第二段工程。已知两段工程的工程量相同，甲、乙、丙三个工程队的效率之比为 5：4：3，为了保证两段工程同时完工，乙工程队应该在第一段工程完成多少进度后转去做第二段工程？( )",
+    "options": ["30%", "37.5%", "40%", "45%"],
+    "answer": 1,
+    "analysis": "考点：数学运算。设总工程量为1。甲乙效率和为9，丙效率为3。设乙在第一段干了x时间。列方程解得进度为37.5%。",
+    "tags": ["数学运算"],
+    "difficulty": "困难"
+  },
+  {
+    "id": 741,
+    "type": "choice",
+    "question": "根据中国居民平衡膳食宝塔，下面说法不正确的是( )。",
+    "options": ["食物平衡膳食“宝塔”的上层比下层每天摄入的量要少", "我们每天吃的食盐少于 6 克才符合健康饮食的标准", "“宝塔”最底层是肉蛋类食物"],
+    "answer": 2,
+    "analysis": "考点：生物常识。平衡膳食宝塔的最底层是谷薯类（主食），肉蛋类在倒数第三层。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 742,
+    "type": "choice",
+    "question": "根据植物对光照强度的适应，可将植物划分为( )。",
+    "options": ["阳性植物、阴性植物、耐阴性植物", "长日照植物、短日照植物、中日照植物", "旱生植物、水生植物、湿生植物", "C3 植物、C4 植物、CAM 植物"],
+    "answer": 0,
+    "analysis": "考点：生物常识。按对光照强度的需求，植物分为阳性、阴性和耐阴植物。B项是按光周期划分。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 743,
+    "type": "choice",
+    "question": "被西方称为“物理学之父”，并提出“给我一个支点，我就能撬动地球”的物理学家是( )。",
+    "options": ["亚里士多德", "阿基米德", "伽利略", "开普勒"],
+    "answer": 1,
+    "analysis": "考点：科学史。阿基米德发现了杠杆原理，并说出了这句名言。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 744,
+    "type": "choice",
+    "question": "考古是发现了解社会历史的重要依据，甲骨文是在殷墟等地发现的刻在龟甲和牛羊等兽骨上的文字。关于这种说法不恰当的是( )。",
+    "options": ["它是古代一种比较成熟的文字", "它是研究商朝历史的唯一资料", "它具备了汉字结构的基本形式", "它记载了商朝的社会生产状况"],
+    "answer": 1,
+    "analysis": "考点：历史常识。甲骨文是研究商朝历史的重要资料，但不是“唯一”资料，还有青铜器铭文、考古遗址等。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 745,
+    "type": "choice",
+    "question": "炎热的夏天，蜻蜓经常贴着水面飞行，尾部不时触到水里，溅起朵朵水花，这就是“蜻蜓点水”，对此正确的解释是( )。",
+    "options": ["蜻蜓为了降温", "蜻蜓在戏水玩耍", "蜻蜓在水中产卵", "蜻蜓在水中找食物"],
+    "answer": 2,
+    "analysis": "考点：生物常识。蜻蜓点水是雌蜻蜓在水中产卵的生理行为。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 746,
+    "type": "choice",
+    "question": "某手机用户使用语音输入手机短信内容，这种将语音转换成文本的技术属于( )。",
+    "options": ["OCR 字符识别", "语音识别", "手写字符识别", "虚拟现实"],
+    "answer": 1,
+    "analysis": "考点：信息技术。将人类语音转化为文本的技术称为语音识别。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 747,
+    "type": "choice",
+    "question": "下列关于秦岭－淮河一线的地理意义的叙述中正确的是( )。",
+    "options": ["7 月0°C 等温线经过的地方", "亚热带与暖温带的分界线", "400毫米年等降水量线经过的地方", "湿润区与半干旱区的分界线"],
+    "answer": 1,
+    "analysis": "考点：地理常识。秦岭淮河是1月0℃等温线、800毫米等降水量线经过的地方，是亚热带与暖温带、湿润区与半湿润区的分界线。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 748,
+    "type": "choice",
+    "question": "我国少数民族人口最多的是( )。",
+    "options": ["满族", "回族", "壮族", "苗族"],
+    "answer": 2,
+    "analysis": "考点：地理常识。壮族是我国人口最多的少数民族。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 749,
+    "type": "choice",
+    "question": "相同体积的 50℃的热水和 10℃冷水相比较，( )。",
+    "options": ["两者一样重", "热水重", "冷水重", "无法判断"],
+    "answer": 2,
+    "analysis": "考点：物理常识。水在4℃以上时，热胀冷缩。体积相同的冷水和热水，冷水密度大，质量更大，故冷水重。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 750,
+    "type": "choice",
+    "question": "下列说法错误的是( )。",
+    "options": ["当今世界各军事强国都将雷达对抗作为研究发展电子战的重点", "深水载人潜水器体积小、航程短，必须依靠母船补给能量和空气", "目前航空母舰舰载机的起飞方式有滑跃起飞、垂直起飞和弹射起飞", "人类使用生物武器可追溯到冷兵器时代，利用细菌、病毒杀伤敌人"],
+    "answer": 0,
+    "analysis": "考点：军事常识。现代电子战研究的重点不仅限于雷达对抗，还包括通信对抗、光电对抗等，A项以偏概全。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 751,
+    "type": "choice",
+    "question": "三级以下地震为微震，五级以上地震为破坏性地震，地震每增一级能量增大( )倍。",
+    "options": ["20", "30", "40", "50"],
+    "answer": 1,
+    "analysis": "考点：地理常识。地震震级每增加一级，能量约增加32倍（接近30倍）。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 752,
+    "type": "choice",
+    "question": "下列选项中有哪一种不属于中国十大名茶？( )。",
+    "options": ["雪绒", "普洱", "铁观音", "瓜片"],
+    "answer": 0,
+    "analysis": "考点：文化常识。中国十大名茶包括西湖龙井、碧螺春、信阳毛尖、君山银针、黄山毛峰、武夷岩茶、祁门红茶、都匀毛尖、铁观音、六安瓜片等，没有“雪绒”。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 753,
+    "type": "choice",
+    "question": "细胞是动植物结构的基本单位。下列有关细胞的说法正确的是( )。",
+    "options": ["病毒是单细胞生物", "水是细胞的主要能源物质", "细胞中的含量最多的无机物是糖", "细胞内含量最多的有机物是蛋白质"],
+    "answer": 3,
+    "analysis": "考点：生物常识。病毒无细胞结构；糖类是主要能源物质；含量最多的无机物是水；含量最多的有机物是蛋白质。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 754,
+    "type": "choice",
+    "question": "“乐民之乐者，民亦乐其乐；忧民之忧者，民亦忧其忧＂。这一诗句体现了百家争鸣时期( )。",
+    "options": ["尚力、尚贤，主张节俭的墨家思想", "关注民生、注重和谐的儒家思想", "以改革促发展的法家思想", "“无为而治”的道家思想"],
+    "answer": 1,
+    "analysis": "考点：历史常识。这句话出自《孟子》，体现了儒家仁政、关注民生的思想。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 755,
+    "type": "choice",
+    "question": "下列海域属于我国内海的是( )。",
+    "options": ["渤海、琼州海峡", "渤海、南海", "黄海、东海", "南海、黄海"],
+    "answer": 0,
+    "analysis": "考点：地理常识。渤海和琼州海峡被我国领海基线包围，属于我国的内海。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 756,
+    "type": "choice",
+    "question": "下列事实能够说明“分子在不停地运动”的是( )。",
+    "options": ["水蒸发为水蒸气体积变大", "水波荡漾", "天空中乌云翻滚", "酒香不怕巷子深"],
+    "answer": 3,
+    "analysis": "考点：物理常识。闻到酒香是酒精分子扩散到空气中的结果，说明分子在不停地运动。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 757,
+    "type": "choice",
+    "question": "下列说法正确的是( )。",
+    "options": ["吸食毒品是未成年人的严重不良行为，但不违法", "君子爱财，取之有道，是指要通过特别的途径来获得金钱", "不良诱惑犹如病毒，需要我们用科学的态度、坚强的意志、清醒的头脑和正确的方法来战胜它们", "面对金钱诱惑，我们应该视之如粪土"],
+    "answer": 2,
+    "analysis": "考点：思想政治。吸毒违法；取之有道指合法途径；金钱不是粪土，要取之有道。C项表述正确。",
+    "tags": ["思想政治"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 758,
+    "type": "choice",
+    "question": "“归纳推理”是化学学习过程中常用的思维方法，下列推理合理的是( )。",
+    "options": ["酸性溶液的 pH＜7，则 pH＜7 的溶液一定是酸性溶液", "同一元素组成纯净物是单质，则含同一元素的物质一定是单质", "铝比铁更易与氧气发生化学反应，则在空气中铝制品比铁制品更易被腐蚀", "中和反应生成盐和水，则生成盐和水的反应一定是中和反应"],
+    "answer": 0,
+    "analysis": "考点：化学常识。B项如氧气和臭氧的混合物；C项铝表面易形成致密氧化膜抗腐蚀；D项如金属氧化物与酸反应生成盐和水不叫中和反应。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 759,
+    "type": "choice",
+    "question": "自然界已知的最硬物质，素有“硬度之王”之称的是( )。",
+    "options": ["铁", "玉石", "金刚石", "石英石"],
+    "answer": 2,
+    "analysis": "考点：化学常识。金刚石是天然存在的最坚硬的物质。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 760,
+    "type": "choice",
+    "question": "“画蛇添足”常用来比喻做了多余的事，非但没有益处，反而不合适。以下关于蛇的脚的解释正确的是( )。",
+    "options": ["蛇的身上有很多鳞片，这些鳞片都曾经是蛇的脚，在进化过程中逐渐演变成了鳞片", "蛇曾经有脚，但在进化过程中因为妨碍爬行，就自然衰退了", "蛇的身上有很多鳞片，这些鳞片既是蛇的盔甲起保护作用，也是它的脚，能配合肌肉推动身体向前爬行", "蛇不需要脚，所以进化过程中没有出现脚"],
+    "answer": 2,
+    "analysis": "考点：生物常识。蛇的鳞片不仅有保护作用，还能通过与地面的摩擦力配合肌肉运动，起到“脚”的作用。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 761,
+    "type": "choice",
+    "question": "明清两代每三年在京城举行一次考试，参加考试的是各省举人及国子监监生，这一考试是( )。",
+    "options": ["会试", "乡试", "殿试", "院试"],
+    "answer": 0,
+    "analysis": "考点：历史常识。明清科举中，在京城举行的全国性考试称为会试。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 762,
+    "type": "choice",
+    "question": "下列叙述中，“碳”和“炭”一字使用正确的是( )。",
+    "options": ["金刚石是由炭元素组成的物质", "活性炭使红墨水褪色", "二氧化炭是一种氧化物", "木碳在氧气中燃烧"],
+    "answer": 1,
+    "analysis": "考点：化学常识。元素用“碳”；具体物质（如活性炭、木炭）用“炭”。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 763,
+    "type": "choice",
+    "question": "关于宇航员在太空的生活，下列说法不正确的是( )。",
+    "options": ["宇航员可使用特定的加热器对食品进行加热", "宇航员从太空返回地面后，失重状态消失，质量会有所增加", "宇航员应睡在固定的睡袋中，以免被气流推动误碰仪器设备开关", "在同一航空器中的宇航员可以直接交谈，无需借助无线电通讯设备"],
+    "answer": 1,
+    "analysis": "考点：科学常识。质量是物体的固有属性，不随位置和状态变化，因此宇航员返回地面后质量不会增加。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 764,
+    "type": "choice",
+    "question": "下列关于对“冬天麦盖三层被，来年枕着馒头睡”的理解，错误的是( )。",
+    "options": ["下雪的时候，土壤温度降低，越冬虫卵大部分会被冻死，使来年的害虫相对减少，有利于农作物生长", "新降的雪疏松多孔，能够贮存大量空气，有防冻保暖作用", "雪中不仅有丰富的水分，而且含有一定的微量元素有利于小麦的生长，便于来年小麦丰收", "融化后的雪水中重水的含量比普通水少25%，显然有利于促进生物生长发育"],
+    "answer": 0,
+    "analysis": "考点：生物常识。下雪时，雪层覆盖反而对土壤有保温作用，土壤温度不会急剧降低，A项表述错误。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 765,
+    "type": "choice",
+    "question": "下列历史事件发生最早的是( )。",
+    "options": ["南昌起义", "遵义会议", "虎门销烟", "“五四运动”"],
+    "answer": 2,
+    "analysis": "考点：历史常识。虎门销烟（1839）早于五四运动（1919）、南昌起义（1927）、遵义会议（1935）。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 766,
+    "type": "choice",
+    "question": "( )是合作的基础。",
+    "options": ["沟通", "倾听", "决策", "诚信"],
+    "answer": 0,
+    "analysis": "考点：职业认知。沟通是合作的基础。",
+    "tags": ["职业认知"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 767,
+    "type": "choice",
+    "question": "下列句子中没有语病的一项是( )。",
+    "options": ["生命就是需要不断地超越，也需要不断地突破，才不致枯滞的", "据厂家介绍，这种多功能治疗仪的价值还在逐步被发现和推广", "这次诗歌节上参加活动的大多是以青年为主", "降低能耗是企业目前当务之急的头等大事"],
+    "answer": 0,
+    "analysis": "考点：言语理解。B项“价值”与“推广”搭配不当；C项句式杂糅；D项“当务之急”与“头等大事”语义重复。",
+    "tags": ["人文知识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 768,
+    "type": "judge",
+    "question": "世界上第一个提出“不治已病治未病”这一防病养生保健康的预防医学观点的是《黄帝外经》。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：中医常识。此观点出自《黄帝内经》。",
+    "tags": ["科学常识"],
+    "difficulty": "中等"
+  },
+  {
+    "id": 769,
+    "type": "judge",
+    "question": "二维码是一种比一维码更高级的条码格式，它能存储汉字、数字、图片等信息。",
+    "options": ["正确", "错误"],
+    "answer": 0,
+    "analysis": "考点：信息技术。二维码相比一维码能在水平和垂直两个方向上储存信息，容量更大。",
+    "tags": ["信息技术"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 770,
+    "type": "judge",
+    "question": "宜兴被称为我国的“瓷都”。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：文化常识。江西景德镇被称为“瓷都”，江苏宜兴被称为“陶都”。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 771,
+    "type": "judge",
+    "question": "鱼没有心脏。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：生物常识。鱼类是脊椎动物，具有心脏（一心房一心室）。",
+    "tags": ["科学常识"],
+    "difficulty": "容易"
+  },
+  {
+    "id": 772,
+    "type": "judge",
+    "question": "杜甫《望岳》中：“岱宗夫如何，齐鲁青未了”的“岱宗”指的是嵩山。",
+    "options": ["正确", "错误"],
+    "answer": 1,
+    "analysis": "考点：文学常识。“岱宗”指的是泰山。",
+    "tags": ["人文知识"],
+    "difficulty": "容易"
+  }
+]
+  },{
+        "paperId": 9,
+        "paperName": "信息技术测试（三）",
+        "questions": [
+	{"id":801,"type":"choice","question":"选用信息技术设备时，比较中肯的建议是","options":["一分钱一分货，越贵越好","产品更替相当快，新产品的某些技术不一定很成熟，要购买成熟的老产品","信息技术发展迅速，必须购买最新产品，才能保证产品不落伍","要考虑实际需求和性价比"],"answer":3,"analysis":"考点：设备选购；按需选购注重性价比","tags":["计算机基础","设备"],"difficulty":"容易"},
+            {"id":802,"type":"choice","question":"在Word 编辑中，下列关于脚注和尾注的描述中，正确的是","options":["脚注和尾注的字体大小和正文一样","脚注只能在指定文字的下方","尾注只能在文档的结尾处","脚注和尾注可对指定内容输入说明性或补充性的信息"],"answer":3,"analysis":"考点：Word；脚注尾注用于补充说明","tags":["Word","脚注"],"difficulty":"中等"},
+            {"id":803,"type":"choice","question":"在 PowerPoint2016 中，下列关于插入音频文件的操作及描述中，正确的是","options":["插入MP3格式音频后，可设置“跨幻灯片播放”，但无法循环","插入WAV格式音频后，音频文件默认嵌入演示文稿中","插入音频后设置“自动”开始方式，图标会隐藏","插入的音频文件若链接到外部文件，拷贝到其他计算机时需保证路径不变"],"answer":3,"analysis":"考点：PPT音频；链接音频需路径一致","tags":["PPT","音频"],"difficulty":"中等"},
+            {"id":804,"type":"choice","question":"在Excel 2016 中，格式化表格的步骤错误的是","options":["选中报表区域，点选“格式”/“样式”中的“套用表格格式”","在格式列表框中选择喜欢的风格","确认报表区域无误后点击确定","如果选择的操作区域比较大，就会出现错误提示"],"answer":3,"analysis":"考点：Excel；区域大不会报错","tags":["Excel","格式"],"difficulty":"中等"},
+            {"id":805,"type":"choice","question":"在PowerPoint 2016中，关于幻灯片的打印设置，下列说法正确的是","options":["隐藏的幻灯片在放映时不显示，也不可以打印","按讲义版式打印时，每页只能打印一张幻灯片","演讲者在幻灯片上留下的墨迹可以擦除，但不能打印","幻灯片中可以插入批注，批注内容可以打印"],"answer":3,"analysis":"考点：PPT打印；批注内容可以打印","tags":["PPT","打印"],"difficulty":"中等"},
+            {"id":806,"type":"choice","question":"IPv4地址为了更加直观和便于记忆，通常用       表示。","options":["二进制","八进制","十进制","十六进制"],"answer":2,"analysis":"考点：网络；IPv4用点分十进制","tags":["网络","IP"],"difficulty":"容易"},
+            {"id":807,"type":"choice","question":"下列不属于网络购物网站的是","options":["淘宝网","京东商城","亚马逊","智联招聘"],"answer":3,"analysis":"考点：网络应用；智联是招聘网站","tags":["网络","应用"],"difficulty":"容易"},
+            {"id":808,"type":"choice","question":"在 Word 2016中插入表格并选中该表格后，选项卡处会新增两个上下文选项卡，描述正确的是 ","options":["新增“设计”和“布局”选项卡，设计用于美化，布局用于调整结构","新增“设计”和“样式”选项卡","新增“布局”和“样式”选项卡","新增“样式”和“格式”选项卡"],"answer":0,"analysis":"考点：Word表格；出现设计与布局","tags":["Word","表格"],"difficulty":"中等"},
+            {"id":809,"type":"choice","question":"Excel 2016设置按钮功能的方法是，打开Excel表格后，先选中单元格，在顶部的菜单栏里选择“      ”→“插入”→“表单控件”","options":["加载项","开发工具","录制宏","扩展包"],"answer":1,"analysis":"考点：Excel；按钮在开发工具","tags":["Excel","控件"],"difficulty":"中等"},
+            {"id":810,"type":"choice","question":"不同类型的文件图标不同，表示系统文件的是","options":["系统图标","文本图标","文件夹图标","应用图标"],"answer":0,"analysis":"考点：系统图标；系统文件专属图标","tags":["操作系统","文件"],"difficulty":"容易"},
+            {"id":811,"type":"choice","question":"执行Python语句“a=10;b=20;print(a>b and b>0)”的结果是","options":["True","False","10>20 and 20<30","报错"],"answer":1,"analysis":"考点：Python；10>20为假，结果假","tags":["Python","逻辑运算"],"difficulty":"容易"},
+            {"id":812,"type":"choice","question":"下列属于主动恶意攻击的是 ","options":["监听网络传输数据","窃取未加密的文件","向目标服务器发送大量请求导致服务器瘫痪","非法复制存储设备中的数据"],"answer":2,"analysis":"考点：信息安全；DoS为主动攻击","tags":["信息安全","攻击"],"difficulty":"中等"},
+            {"id":813,"type":"judge","question":"在计算机内部，数据是以二进制的形式进行加工、处理、存储和传送的。","options":["正确","错误"],"answer":0,"analysis":"考点：计算机基础；内部用二进制","tags":["计算机基础","进制"],"difficulty":"容易"},
+            {"id":814,"type":"judge","question":"PSD、PDF、WMA、MAX都不是音频文件格式。","options":["正确","错误"],"answer":1,"analysis":"考点：多媒体；WMA是音频格式","tags":["多媒体","格式"],"difficulty":"中等"},
+            {"id":815,"type":"judge","question":"修改Word自定义样式后，手动调整过颜色的段落会同步更新颜色。","options":["正确","错误"],"answer":1,"analysis":"考点：Word；手动格式优先于样式","tags":["Word","样式"],"difficulty":"困难"},
+            {"id":816,"type":"judge","question":"图像识别可修复强光模糊图像，识别准确率与图像清晰度无关。","options":["正确","错误"],"answer":1,"analysis":"考点：AI；清晰度影响识别准确率","tags":["人工智能","图像识别"],"difficulty":"困难"},
+            {"id":817,"type":"judge","question":"随意向陌生APP授权获取手机相册权限，可能导致个人隐私泄露。","options":["正确","错误"],"answer":0,"analysis":"考点：信息安全；权限授权有风险","tags":["信息安全","权限"],"difficulty":"容易"},
+            {"id":818,"type":"judge","question":"常用数据处理软件WPS表格中，数据透视表的字段列表可根据用户需求自定义显示或隐藏。","options":["正确","错误"],"answer":0,"analysis":"考点：Excel；字段列表可自定义","tags":["Excel","数据透视表"],"difficulty":"中等"},
+	   {"id":819,"type":"choice","question":"在Excel2016中，要求A5到A10单元格内6个数值的平均值应该使用的公式是","options":["=SUM(A5:A10)","=MAX(A5:A10)","=MIN(A5:A10)","=AVERAGE(A5:A10)"],"answer":3,"analysis":"考点：Excel函数；AVERAGE求平均","tags":["Excel","函数"],"difficulty":"容易"},
+            {"id":820,"type":"choice","question":"关于Excel2016的高级筛选，下列说法正确的是","options":["不可以将高级筛选结果复制到其他位置","不可以在原有数据区域显示筛选结果","同一行不同单元格中的条件互为“或”逻辑关系","不同行单元格中的条件互为“或”逻辑关系"],"answer":3,"analysis":"考点：Excel；高级筛选不同行为或","tags":["Excel","筛选"],"difficulty":"中等"},
+            {"id":821,"type":"choice","question":"在PowerPoint2016 中，下列关于视图功能的描述正确的是 ","options":["大纲视图适合编辑文本内容，但移动幻灯片操作不便","阅读视图可方便地添加、复制、移动、删除幻灯片","幻灯片浏览视图能直观地进行幻灯片的排序和管理，但不能直接编辑单张幻灯片内容","备注页视图主要用于查看和编辑幻灯片的备注信息，也可进行幻灯片的移动操作"],"answer":2,"analysis":"考点：PPT；浏览视图可排序不可编辑","tags":["PPT","视图"],"difficulty":"中等"},
+            {"id":822,"type":"choice","question":"在PowerPoint中，保存演示文稿的快捷键是","options":["Ctrl+S","Ctrl+P","Ctrl+N","Ctrl+O"],"answer":0,"analysis":"考点：PPT快捷键；Ctrl+S保存","tags":["PPT","快捷键"],"difficulty":"容易"},
+            {"id":823,"type":"choice","question":"百度等搜索引擎是一个","options":["软件","服务器","网站","数据中心实验室"],"answer":2,"analysis":"考点：网络；搜索引擎是网站","tags":["网络","搜索"],"difficulty":"容易"},
+            {"id":824,"type":"choice","question":"在Word 2016中，下列关于使用“绘制表格”功能制作表格的描述中，不正确的是","options":["绘制表格外边框时，按住Shift键可绘制等比例矩形边框","可调整线条粗细","使用橡皮擦可以擦除多余线条，擦除外边框后表格会自动拆分","在表格内单击完成绘制"],"answer":2,"analysis":"考点：Word；擦除外边框不会拆分","tags":["Word","表格"],"difficulty":"中等"},
+            {"id":825,"type":"choice","question":"计算机中2KB字节表示的二进制位数是","options":["2048","16000","2000","16384"],"answer":3,"analysis":"考点：存储单位；2×1024×8=16384","tags":["计算机基础","存储"],"difficulty":"中等"},
+            {"id":826,"type":"choice","question":"下列网页浏览器中，属于 Windows系统自带的是","options":["EDGE浏览器","Chrome 浏览器","QQ浏览器","360浏览器"],"answer":0,"analysis":"考点：系统；Edge为自带浏览器","tags":["操作系统","软件"],"difficulty":"容易"},
+            {"id":827,"type":"choice","question":"在Word 2016中，通过“插入”选项卡“符号”组“公式”按钮插入的公式，描述正确的是 ","options":["需进入公式编辑模式修改内容，字体可通过“开始”选项卡调整","内容和字体仅能在公式工具中修改，段落格式可按普通文本设置","内容和字体需通过公式工具编辑，段落格式不能与正文统一调整","内容、字体、段落均需在公式工具中完成修改，无法复用文本格式"],"answer":1,"analysis":"考点：Word；公式需在公式工具编辑","tags":["Word","公式"],"difficulty":"中等"},
+            {"id":828,"type":"choice","question":"下列存储器中，存取速度最快的是","options":["固态硬盘","U盘","网盘","光盘"],"answer":0,"analysis":"考点：硬件；固态硬盘速度最快","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":829,"type":"choice","question":"下列 Python if 语句的语法，正确的是 ","options":["if x>5 then print(x)","if x>5: print(x)","if x>5 print(x)","if x>5 {print(x)}"],"answer":1,"analysis":"考点：Python；if后加冒号","tags":["Python","语法"],"difficulty":"容易"},
+            {"id":830,"type":"choice","question":"计算机病毒的主要特征不包括 ","options":["传染性","潜伏性","自愈性","破坏性"],"answer":2,"analysis":"考点：信息安全；病毒无自愈性","tags":["信息安全","病毒"],"difficulty":"容易"},
+            {"id":831,"type":"judge","question":"应用软件的作用是优化操作系统的运行速度。","options":["正确","错误"],"answer":1,"analysis":"考点：软件；应用软件为特定任务服务","tags":["计算机基础","软件"],"difficulty":"容易"},
+            {"id":832,"type":"judge","question":"可以在智能手机上下载抖音或快手类的APP制作并发布短视频。","options":["正确","错误"],"answer":0,"analysis":"考点：数字媒体；支持手机创作发布","tags":["多媒体","应用"],"difficulty":"容易"},
+            {"id":833,"type":"judge","question":"Word的“插入”选项卡中提供了绘制矩形、圆形等简单图形的功能，但无法调整图形的颜色和边框样式。","options":["正确","错误"],"answer":1,"analysis":"考点：Word；可修改颜色边框","tags":["Word","图形"],"difficulty":"容易"},
+            {"id":834,"type":"judge","question":"早期人工智能的研究主要集中在符号主义学派，通过逻辑推理实现简单的智能行为。","options":["正确","错误"],"answer":0,"analysis":"考点：AI；早期以符号推理为主","tags":["人工智能","发展"],"difficulty":"中等"},
+            {"id":835,"type":"judge","question":"公共Wi-Fi环境下仅进行视频观看，不输入敏感信息，就不会存在信息安全风险。","options":["正确","错误"],"answer":1,"analysis":"考点：信息安全；公共网络存在窃听风险","tags":["信息安全","网络安全"],"difficulty":"容易"},
+            {"id":836,"type":"judge","question":"Word 的“批注”功能支持插入图片和表格，用于更直观地补充文档说明。","options":["正确","错误"],"answer":1,"analysis":"考点：Word；批注一般不支持表格图片","tags":["Word","批注"],"difficulty":"中等"},
+	    {"id":837,"type":"choice","question":"下列不属于智能手机主流操作系统的是","options":["安卓(Android)操作系统","苹果公司的 IOS操作系统","华为公司的鸿蒙操作系统","Windows 10操作系统"],"answer":3,"analysis":"考点：操作系统；Windows10不是手机系统","tags":["操作系统","移动设备"],"difficulty":"容易"},
+            {"id":838,"type":"choice","question":"百度网盘、腾讯微云、华为云空间等云存储与传统存储方式相比，不具有的特点是","options":["存储容量弹性拓展","数据存储位置固定不变","面向多种类型的网络在线存储服务","资源共享性"],"answer":1,"analysis":"考点：云存储；云存储位置不固定","tags":["网络","云存储"],"difficulty":"中等"},
+            {"id":839,"type":"choice","question":"利用Word制作书籍目录，为实现目录自动编排，需要先设置各级标题的","options":["字体","字号","样式","颜色"],"answer":2,"analysis":"考点：Word目录；需先设置标题样式","tags":["Word","目录"],"difficulty":"容易"},
+            {"id":840,"type":"choice","question":"Word 2016创建的文字文档中默认行距是","options":["单倍行距","1.5 倍行距","两倍行距","最小值"],"answer":0,"analysis":"考点：Word排版；默认单倍行距","tags":["Word","排版"],"difficulty":"容易"},
+            {"id":841,"type":"choice","question":"下列各项设备中，不属于计算机主机内的部件是","options":["CPU","内存条","主板","鼠标"],"answer":3,"analysis":"考点：硬件；鼠标是外部设备","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":842,"type":"choice","question":"Excel 的单元格A1内有公式“=E11+E12”，将其复制到单元格 B1，B1单元格内的公式为","options":["=C11+C12","=F11+F12","=B11+B12","=D11+D12"],"answer":1,"analysis":"考点：Excel引用；相对引用自动偏移","tags":["Excel","公式"],"difficulty":"中等"},
+            {"id":843,"type":"choice","question":"在 Excel2016 中，为工作表设置图片背景并实现“仅在打印时显示背景、编辑界面隐藏”的效果，下列操作及描述正确的是 ","options":["直接在“页面布局”选项卡设置背景，勾选“打印背景”即可","先在“页面布局”设置背景，再通过“页面设置”隐藏编辑界面背景","需通过“插入”选项卡插入图片当背景","“开始”选项卡的“背景”功能可设置图片背景"],"answer":1,"analysis":"考点：Excel；需用页面布局配合页面设置","tags":["Excel","背景"],"difficulty":"困难"},
+            {"id":844,"type":"choice","question":"PPT幻灯片放映过程中，使用绘图笔写画的内容","options":["这些写画内容在播放的过程中无法清除","下次放映时一定会再显示出来","下次放映时一定不会再显示出来","可以让这些内容下次显示，也可以不显示"],"answer":3,"analysis":"考点：PPT；墨迹可选择保留或不保留","tags":["PPT","放映"],"difficulty":"中等"},
+            {"id":845,"type":"choice","question":"下列技术应用场景与虚拟现实技术（VR）概念匹配的是","options":["玩家佩戴VR设备进入纯虚拟游戏场景进行交互","学生借助设备在真实实验室中叠加虚拟实验步骤","游客参观展览时给真实兵马俑添加虚拟武器","医生在真实手术环境中查看虚拟的手术解剖图谱"],"answer":0,"analysis":"考点：VR/AR；VR为纯虚拟场景","tags":["人工智能","VR/AR"],"difficulty":"中等"},
+            {"id":846,"type":"choice","question":"京东商城是网络在       方面的应用。","options":["资源共享","电子商务","即时通信","协同处理"],"answer":1,"analysis":"考点：网络应用；京东属于电商","tags":["网络","应用"],"difficulty":"容易"},
+            {"id":847,"type":"choice","question":"执行Python代码x=7，if x%2==0成立则y=x*2，否则y=x+3，变量y的值是 ","options":["14","10","7","3"],"answer":1,"analysis":"考点：Python；7是奇数，y=7+3=10","tags":["Python","条件判断"],"difficulty":"容易"},
+            {"id":848,"type":"choice","question":"下列技术中，不属于常用信息安全防护技术的是 ","options":["防火墙技术","数据加密技术","虚拟专用网络(VPN)技术","数据共享技术"],"answer":3,"analysis":"考点：信息安全；数据共享不是防护技术","tags":["信息安全","防护"],"difficulty":"容易"},
+            {"id":849,"type":"judge","question":"安全关闭计算机的正确方法是直接按主机上的电源开关。","options":["正确","错误"],"answer":1,"analysis":"考点：系统；应通过开始菜单关机","tags":["操作系统","操作"],"difficulty":"容易"},
+            {"id":850,"type":"judge","question":"制作“摇头娃娃”动画效果时，需事先对照片头像进行抠图处理。","options":["正确","错误"],"answer":0,"analysis":"考点：多媒体；抠图是必要步骤","tags":["多媒体","图像处理"],"difficulty":"容易"},
+            {"id":851,"type":"judge","question":"借助 Word 中的公式编辑器，可绘制一元二次方程、三角函数等复杂数学公式。","options":["正确","错误"],"answer":0,"analysis":"考点：Word；公式编辑器支持复杂公式","tags":["Word","公式"],"difficulty":"容易"},
+            {"id":852,"type":"judge","question":"人工智能系统的智能水平已经完全超越人类，在所有领域都能替代人类工作。","options":["正确","错误"],"answer":1,"analysis":"考点：AI；AI未全面超越人类","tags":["人工智能","应用"],"difficulty":"容易"},
+            {"id":853,"type":"judge","question":"网络安全等级保护第一级信息系统适用于涉及公共利益的重要信息系统。","options":["正确","错误"],"answer":1,"analysis":"考点：等保；一级为一般系统","tags":["信息安全","等保"],"difficulty":"中等"},
+            {"id":854,"type":"judge","question":"Excel文件在 WPS 表格中打开后，所有函数功能均可正常使用。","options":["正确","错误"],"answer":1,"analysis":"考点：兼容；部分函数不兼容","tags":["Excel","兼容"],"difficulty":"中等"},
+	    {"id":855,"type":"choice","question":"讯飞输入法能将语音转换成对应文字，这属于     输入法。","options":["拼音","字形","语音识别","光学识别"],"answer":2,"analysis":"考点：输入；语音转文字为语音识别","tags":["计算机基础","输入"],"difficulty":"容易"},
+            {"id":856,"type":"choice","question":"京东商城属于","options":["O2O","C2C","B2B","B2C"],"answer":3,"analysis":"考点：电商；B2C是商家对个人","tags":["网络","电商"],"difficulty":"中等"},
+            {"id":857,"type":"choice","question":"在Word中批量制作邀请函、成绩单等统一格式文档可使用","options":["邮件合并","连续打印","公式","模板"],"answer":0,"analysis":"考点：Word；邮件合并用于批量文档","tags":["Word","邮件合并"],"difficulty":"中等"},
+            {"id":858,"type":"choice","question":"Word文字字号“四号”“五号”“14磅”“16磅”比较正确的是","options":["“五号”大于“四号”","字的大小一样，字体不同","“16磅”大于“四号”","“14磅”小于“五号”"],"answer":2,"analysis":"考点：Word；四号≈14磅，16磅更大","tags":["Word","字体"],"difficulty":"中等"},
+            {"id":859,"type":"choice","question":"PowerPoint 2016演示文稿默认的文件扩展名是","options":[".DOCX",".PPTX",".Prproj",".MOV"],"answer":1,"analysis":"考点：文件格式；PPTX为PPT默认格式","tags":["PPT","文件"],"difficulty":"容易"},
+            {"id":860,"type":"choice","question":"QQ群主要用来","options":["电子购物","下载资源","多人交流","存储文件"],"answer":2,"analysis":"考点：网络应用；QQ群用于多人聊天","tags":["网络","即时通讯"],"difficulty":"容易"},
+            {"id":861,"type":"choice","question":"在微机的硬件系统中，        是计算机的记忆部件。","options":["控制器","存储器","中央处理器","运算器"],"answer":1,"analysis":"考点：硬件；存储器用于存储数据","tags":["计算机基础","硬件"],"difficulty":"容易"},
+            {"id":862,"type":"choice","question":"在Excel的单元格F3中用=SUM(A5:D5)计算总和，若在B列和C列之间增加一列，F3的值会","options":["公式不变结果不变","自动更新为=SUM(A5:E5)","需要手动修改公式","公式出错"],"answer":1,"analysis":"考点：Excel；区域引用会自动扩展","tags":["Excel","函数"],"difficulty":"中等"},
+            {"id":863,"type":"choice","question":"在Excel2016中，分类汇总的默认汇总方式是","options":["平均值","计数","求和","最大值"],"answer":2,"analysis":"考点：Excel；默认汇总方式为求和","tags":["Excel","分类汇总"],"difficulty":"容易"},
+            {"id":864,"type":"choice","question":"在PowerPoint2016 中，关于超链接的添加，下列说法不正确的是 ","options":["可以为文本框中的文本、图片、艺术字添加超链接","可以为SmartArt图形中的单个形状或文本添加超链接","可以为幻灯片背景添加超链接，点击背景任意位置均可跳转","艺术字转换为形状后，仍可作为一个整体添加超链接"],"answer":2,"analysis":"考点：PPT；背景不能加超链接","tags":["PPT","超链接"],"difficulty":"中等"},
+            {"id":865,"type":"choice","question":"Python代码i=1，count=0，while i<=5：count+=1，i+=2，执行次数是","options":["2 次","3 次","4次","5次"],"answer":1,"analysis":"考点：Python；i=1,3,5 共3次","tags":["Python","循环"],"difficulty":"中等"},
+            {"id":866,"type":"choice","question":"下列关于防火墙的描述中，正确的是 ","options":["防火墙只能防范网络外部的攻击，无法防护内部攻击","防火墙可以替代杀毒软件进行病毒防护","防火墙通过阻断所有网络连接来保障安全","防火墙不能防范通过加密传输的恶意数据"],"answer":3,"analysis":"考点：防火墙；无法解析加密数据","tags":["信息安全","防火墙"],"difficulty":"中等"},
+            {"id":867,"type":"judge","question":"手机游戏和电脑游戏都属于多媒体产品。","options":["正确","错误"],"answer":0,"analysis":"考点：多媒体；游戏属于多媒体产品","tags":["多媒体","产品"],"difficulty":"容易"},
+            {"id":868,"type":"judge","question":"使用WinRAR、7-Zip等压缩软件，既能压缩也能解压文件。","options":["正确","错误"],"answer":0,"analysis":"考点：软件；压缩软件支持双向操作","tags":["工具软件","压缩"],"difficulty":"容易"},
+            {"id":869,"type":"judge","question":"Excel的核心功能仅包括数据录入和简单计算。","options":["正确","错误"],"answer":1,"analysis":"考点：Excel；支持分类汇总、图表等","tags":["Excel","功能"],"difficulty":"容易"},
+            {"id":870,"type":"judge","question":"智能推荐系统是人工智能在数据挖掘和机器学习领域的应用。","options":["正确","错误"],"answer":0,"analysis":"考点：AI；推荐系统属于机器学习","tags":["人工智能","应用"],"difficulty":"容易"},
+            {"id":871,"type":"judge","question":"数据安全的“完整性”是指数据在传输和存储过程中不被未经授权修改、删除。","options":["正确","错误"],"answer":0,"analysis":"考点：信息安全；完整性定义正确","tags":["信息安全","基础"],"difficulty":"容易"},
+            {"id":972,"type":"judge","question":"数字媒体编码技术仅能处理音频模拟信号。","options":["正确","错误"],"answer":1,"analysis":"考点：多媒体；编码可处理音视频","tags":["多媒体","编码"],"difficulty":"容易"}
+  ]}
+];
+
+// 自动分卷函数
+function splitBigPaper(bigPaperName, questions, perCount=20){
+    let papers = [];
+    for(let i=0; i<questions.length; i+=perCount){
+        papers.push({paperId:9000+(i/perCount+1),paperName:`${bigPaperName}-第${i/perCount+1}套`,questions:questions.slice(i,i+perCount)});
+    }
+    return papers;
+}
+
+let allPapers = [...questionPapers];
+let allQuestions = allPapers.flatMap(p=>p.questions);
+
+// ===================== 全局状态 =====================
+let currentMode = 'seq';
+let currentList = [];
+let currentIndex = 0;
+let userAnswers = {};
+let examAnswers = {};
+
+// ===================== 初始化 =====================
+document.addEventListener('DOMContentLoaded', () => {
+    renderPaperSelector();
+    bindTabEvents();
+    initMode('seq');
+});
+
+// 绑定选项卡切换
+function bindTabEvents(){
+    document.querySelectorAll('.nav-link').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+            document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            initMode(btn.dataset.mode);
+        });
+    });
+}
+
+// 渲染套卷选择器
+function renderPaperSelector(){
+    const sel = document.getElementById('paperSelector');
+    sel.innerHTML = '<option value="0">请选择套卷</option>';
+    allPapers.forEach(p=>{
+        const opt = document.createElement('option');
+        opt.value = p.paperId;
+        opt.innerText = p.paperName;
+        sel.appendChild(opt);
+    });
+}
+
+// 切换套卷
+function changePaper(){
+    const pid = parseInt(document.getElementById('paperSelector').value);
+    if(!pid) return;
+    const paper = allPapers.find(p=>p.paperId === pid);
+    currentList = [...paper.questions];
+    currentIndex = 0;
+    userAnswers = {};
+    renderQuestion();
+}
+
+// ===================== 模式初始化 =====================
+function initMode(mode){
+    currentMode = mode;
+    currentIndex = 0;
+    userAnswers = {};
+    examAnswers = {};
+
+    document.getElementById('practice-area').classList.add('d-none');
+    document.getElementById('exam-area').classList.add('d-none');
+    document.getElementById('paperSelector').classList.add('d-none');
+    document.getElementById('progress-box').classList.add('d-none');
+    document.getElementById('progress-text').classList.add('d-none');
+    document.getElementById('topic-settings').classList.add('d-none');
+    document.getElementById('feedback-area').classList.add('d-none');
+    document.getElementById('random-refresh-btn').classList.add('d-none');
+    document.getElementById('exam-generate-btn').classList.add('d-none');
+
+    if(mode === 'seq'){
+        document.getElementById('mode-title').innerText = '顺序练习（选择套卷）';
+        document.getElementById('practice-area').classList.remove('d-none');
+        document.getElementById('paperSelector').classList.remove('d-none');
+        document.getElementById('progress-box').classList.remove('d-none');
+        document.getElementById('progress-text').classList.remove('d-none');
+        changePaper();
+    }
+
+    if(mode === 'random'){
+        document.getElementById('mode-title').innerText = '随机练习（全库）';
+        document.getElementById('practice-area').classList.remove('d-none');
+        document.getElementById('progress-box').classList.remove('d-none');
+        document.getElementById('progress-text').classList.remove('d-none');
+        document.getElementById('random-refresh-btn').classList.remove('d-none');
+        refreshRandom();
+    }
+
+    if(mode === 'topic'){
+        document.getElementById('mode-title').innerText = '专题练习';
+        document.getElementById('practice-area').classList.remove('d-none');
+        document.getElementById('topic-settings').classList.remove('d-none');
+        renderTags();
+    }
+
+    if(mode === 'exam'){
+        document.getElementById('mode-title').innerText = '模拟考试';
+        document.getElementById('exam-area').classList.remove('d-none');
+        document.getElementById('exam-generate-btn').classList.remove('d-none');
+        document.getElementById('exam-list').innerHTML = '<p class="text-center">点击【生成试卷】开始考试</p>';
+    }
+}
+
+// 随机练习：刷新抽题
+function refreshRandom(){
+    currentList = shuffleArray([...allQuestions]);
+    currentIndex = 0;
+    userAnswers = {};
+    renderQuestion();
+}
+
+// ===================== 专题练习 =====================
+function renderTags(){
+    const container = document.getElementById('tag-container');
+    container.innerHTML = '';
+    const tags = [...new Set(allQuestions.flatMap(q=>q.tags))].sort();
+    tags.forEach(tag=>{
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-primary btn-sm m-1 tag-btn';
+        btn.innerText = tag;
+        btn.onclick = e=>{
+            e.target.classList.toggle('active');
+            e.target.classList.toggle('bg-primary');
+            e.target.classList.toggle('text-white');
+        };
+        container.appendChild(btn);
+    });
+}
+
+function startTopicPractice(){
+    const selected = Array.from(document.querySelectorAll('.tag-btn.active')).map(b=>b.innerText);
+    if(!selected.length){ alert('请选择至少一个标签'); return; }
+    currentList = shuffleArray(allQuestions.filter(q=>q.tags.some(t=>selected.includes(t))));
+    currentIndex = 0;
+    userAnswers = {};
+    document.getElementById('topic-settings').classList.add('d-none');
+    document.getElementById('progress-box').classList.remove('d-none');
+    document.getElementById('progress-text').classList.remove('d-none');
+    renderQuestion();
+}
+
+// ===================== 模拟考试 =====================
+function generateExamPaper(){
+    examAnswers = {};
+    currentList = shuffleArray([...allQuestions]).slice(0, 50);
+    renderExamPaper();
+}
+
+function renderExamPaper(){
+    const container = document.getElementById('exam-list');
+    container.innerHTML = '';
+    
+    currentList.forEach((q, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'exam-question';
+        let typeLabel = q.type === 'choice' ? '<span class="badge bg-info me-2">单选</span>' : '<span class="badge bg-warning me-2">判断</span>';
+        let optionsHtml = '';
+
+        q.options.forEach((opt, i)=>{
+            const label = String.fromCharCode(65+i);
+            optionsHtml += `
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="exam-${idx}" id="q-exam-${idx}-${i}" value="${i}" onchange="selectExamAnswer(${idx},${i})">
+                <label class="form-check-label" for="q-exam-${idx}-${i}">${label}. ${opt}</label>
+            </div>`;
+        });
+
+        div.innerHTML = `<h6>第${idx+1}题 ${typeLabel} ${q.question}</h6><div class="mt-2">${optionsHtml}</div>`;
+        container.appendChild(div);
+    });
+}
+
+function selectExamAnswer(index, ans){
+    examAnswers[index] = ans;
+}
+
+// 提交试卷（自定义DIV弹窗，修复无响应）
+function submitExam(){
+    if(currentList.length === 0){
+        alert('请先点击【生成试卷】！');
+        return;
+    }
+    if(Object.keys(examAnswers).length < currentList.length){
+        alert('请完成所有题目再提交！');
+        return;
+    }
+
+    let correct = 0;
+    let result = `<h3 class="text-center mb-4">📝 考试判分报告</h3><hr>`;
+    currentList.forEach((q,i)=>{
+        const userAns = examAnswers[i];
+        const rightAns = q.answer;
+        const isRight = userAns === rightAns;
+        if(isRight) correct++;
+        
+        const qType = q.type === 'choice' ? '单选题' : '判断题';
+        const userOpt = String.fromCharCode(65+userAns);
+        const rightOpt = String.fromCharCode(65+rightAns);
+        result += `<p>${i+1}.${qType}：${isRight ? '<span class="text-success">✅ 正确</span>' : '<span class="text-danger">❌ 错误</span>'} | 你的答案：${userOpt} | 正确答案：${rightOpt}</p>`;
+    });
+    
+    const score = Math.round(correct/currentList.length*100);
+    result += `<hr><h4 class="text-center">🎯 总分：${score}分 | ✅ 做对：${correct}题 | ❌ 做错：${currentList.length-correct}题</h4>`;
+    
+    document.getElementById('scoreResult').innerHTML = result;
+    document.getElementById('scoreModal').style.display = 'flex';
+}
+
+// 关闭弹窗
+function closeScoreModal(){
+    document.getElementById('scoreModal').style.display = 'none';
+}
+
+// ===================== 逐题练习渲染 =====================
+function renderQuestion(){
+    if(!currentList.length) return;
+    const q = currentList[currentIndex];
+    updateProgress();
+
+    document.getElementById('q-type').innerText = q.type==='choice'?'单选题':'判断题';
+    document.getElementById('q-type').className = q.type==='choice'?'badge bg-info':'badge bg-warning';
+    document.getElementById('q-content').innerText = `${q.id}. ${q.question}`;
+
+    const optBox = document.getElementById('options-container');
+    optBox.innerHTML = '';
+
+    q.options.forEach((opt,i)=>{
+        const btn = document.createElement('button');
+        const label = String.fromCharCode(65+i);
+        let cls = 'btn btn-outline-primary option-btn';
+        
+        if(userAnswers[currentIndex] !== undefined){
+            btn.disabled = true;
+            if(i === q.answer) cls = 'btn btn-success option-btn';
+            else if(userAnswers[currentIndex] === i) cls = 'btn btn-danger option-btn';
+        }
+
+        btn.className = cls;
+        btn.innerHTML = `<strong>${label}.</strong> ${opt}`;
+        btn.onclick = ()=>{ userAnswers[currentIndex]=i; renderQuestion(); showAnswer(q); };
+        optBox.appendChild(btn);
+    });
+
+    userAnswers[currentIndex]!==undefined ? showAnswer(q) : document.getElementById('feedback-area').classList.add('d-none');
+}
+
+function showAnswer(q){
+    const area = document.getElementById('feedback-area');
+    const flag = document.getElementById('correct-flag');
+    const analysis = document.getElementById('q-analysis');
+    area.classList.remove('d-none');
+
+    if(userAnswers[currentIndex] === q.answer){
+        flag.className = 'alert alert-success';
+        flag.innerText = '✅ 回答正确';
+    }else{
+        flag.className = 'alert alert-danger';
+        const ans = String.fromCharCode(65+q.answer);
+        flag.innerText = `❌ 错误，正确答案：${ans}`;
+    }
+    analysis.innerText = q.analysis || '无解析';
+}
+
+function nextQuestion(){ 
+    currentIndex < currentList.length-1 ? (currentIndex++, renderQuestion()) : alert('已到最后一题！');
+}
+function prevQuestion(){ 
+    currentIndex>0 && (currentIndex--, renderQuestion());
+}
+
+function updateProgress(){
+    const t = currentList.length, c=currentIndex+1;
+    document.getElementById('progress-text').innerText = `${c}/${t}`;
+    document.getElementById('progress-bar').style.width = (c/t*100)+'%';
+}
+
+function shuffleArray(a){ 
+    for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a; 
+}
+</script>
+</body>
+</html>
